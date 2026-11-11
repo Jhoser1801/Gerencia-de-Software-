@@ -22,13 +22,13 @@ Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → c
 1. Descomprimir la carpeta (o clonar el repositorio).
 2. Abrir `index.html` con doble clic. No hay que modificar código.
 
-Sin configurar nada, la app arranca en **modo local**: guarda los pedidos en el navegador (localStorage) con las mismas reglas que la base de datos y lo avisa con una franja amarilla arriba.
+Sin configurar nada, la app arranca en **modo local**: guarda los pedidos en el navegador (localStorage) con las mismas reglas que la base de datos. La interfaz es la misma en los dos modos.
 
 ### Conectar Supabase (modo nube)
 1. Crear un proyecto en Supabase.
 2. SQL Editor → pegar todo `db/schema.sql` → Run. Crea tablas, RLS, funciones y datos de prueba.
 3. Project Settings → API → copiar **Project URL** y la clave **anon public** en `config.js`.
-4. Recargar `index.html`. La franja de "Modo local" desaparece.
+4. Recargar `index.html`. Desde ese momento los pedidos se guardan en Supabase.
 
 Nunca poner la clave `service_role` en `config.js` ni en el repositorio. La clave `anon` es pública por diseño: con RLS solo puede llamar `confirmar_pedido`, `consultar_pedido` y `registrar_pago`; no puede leer ni escribir tablas directamente.
 Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada entrega o sustentación.

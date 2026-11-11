@@ -52,7 +52,6 @@ dialog::backdrop{background:rgba(62,35,18,.45)}
 /* lo que agregamos en el proyecto integrador: cantidades, confirmar, pagar y consultar */
 [hidden]{display:none!important}
 .carro{border:0;background:none;font-size:1rem;padding:.4rem .2rem}
-.modo-local{margin:0;padding:.5rem 1.6rem;background:#fff4e0;color:#7a4a00;font-size:.85rem;border-bottom:1px solid var(--linea)}
 .aviso{color:var(--mal);font-weight:600;min-height:1.3rem;margin:.4rem 0}
 .ok{color:var(--ok);font-weight:700}.pendiente{color:var(--bajo);font-weight:700}
 .nota{color:#6b5a4d}
@@ -102,7 +101,6 @@ dialog .total,.tarjeta-pedido .total{font-size:1.25rem}
   h1,.pagina h1{font-size:1.9rem}
   .grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
   .tile{height:120px}
-  .modo-local{padding:.5rem 1rem}
   .estados{align-items:flex-start}
 }
 

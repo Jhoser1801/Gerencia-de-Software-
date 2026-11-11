@@ -306,7 +306,6 @@ function pintarPago() {
 // Al abrir la página
 $("modal").addEventListener("close", () => { estado.producto = null; estado.tamano = null; imagenActual = null; avisoModal = ""; $("detalle").innerHTML = ""; pintar(); });
 $("resumen").addEventListener("cancel", e => { if (checkout.enviando) e.preventDefault(); });
-$("modo-local").hidden = Api.modo !== "local";
 window.addEventListener("hashchange", mostrarVista);
 pintar();
 mostrarVista();

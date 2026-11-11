@@ -6,7 +6,7 @@ Lattely es la cafetería online del proyecto integrador. Con ella el cliente arm
 1. Descomprimir `Lattely_codigo_fuente.zip` o clonar el repositorio.
 2. Abrir `index.html` con doble clic en Chrome, Edge, Firefox o Safari.
 
-No hay que instalar nada. Si arriba aparece una franja amarilla que dice **"Modo local"**, los pedidos se guardan solo en ese navegador. Para guardarlos en la nube, ver la sección *Conectar Supabase* del `README.md`.
+No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos se guardan solo en ese navegador. Para guardarlos en la nube, ver la sección *Conectar Supabase* del `README.md`.
 
 ## 2. Recorrido principal
 
