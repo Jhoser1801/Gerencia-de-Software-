@@ -66,7 +66,7 @@ Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada 
 | `app.js` | Estado, acciones y pintado de la interfaz |
 | `db/schema.sql` | Tablas, RLS, funciones `confirmar_pedido`, `consultar_pedido`, `registrar_pago` y datos |
 | `pruebas/logica.test.js` | Pruebas automáticas |
-| `img/` | Una foto por producto, 600×600 |
+| `img/` | Una foto por producto, 600×600, WebP con fondo transparente |
 
 ## Decisiones de diseño
 - **Precios en el servidor:** el navegador manda solo producto, tamaño, leche y cantidad. `confirmar_pedido` recalcula todo desde las tablas, así un precio manipulado no cambia el cobro.
@@ -144,16 +144,9 @@ node --test pruebas/logica.test.js
 - Al implementar la navegación entre vistas, el menú no se ocultaba al ir a "Pagar" porque `.layout{display:grid}` anulaba el atributo `hidden`. Corregido con `[hidden]{display:none!important}` en `estilos.css`.
 - BUG-01 (SCRUM-22) se previno calculando siempre desde el precio base; P9 lo confirma. Vincular P9 con SCRUM-10.
 
-## Créditos de imágenes
-Fotos de Wikimedia Commons, recortadas a 600×600 para la página (cambio de las imágenes: recorte y reducción; en el Americano se rellenaron los lados con la misma foto desenfocada para hacerla cuadrada).
+## Imágenes
+Una foto por producto en `img/`: `latte.webp`, `cappuccino.webp`, `americano-frio.webp` y `te-chai.webp`. Son PNG con fondo transparente que el equipo entregó, recortados al contorno de la taza, centrados en un lienzo cuadrado y reducidos a 600×600 en formato WebP (de 1,3 MB a menos de 60 KB cada uno). Los originales quedaron fuera del repositorio, en `Imagenes/originales_png/`.
 
-| Archivo en `img/` | Original | Autor | Licencia |
-|---|---|---|---|
-| `latte.jpg` | [Glass of Coffee Latte with Pastry (1)](https://commons.wikimedia.org/wiki/File:Glass_of_Coffee_Latte_with_Pastry_(1).jpg) | Jonatan Svensson Glad | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
-| `cappuccino.jpg` | [Cappuccino with Chocolate](https://commons.wikimedia.org/wiki/File:Cappuccino_with_Chocolate.jpg) | Benjamin Thomas | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/) |
-| `americano-frio.jpg` | [Iced Americano 1](https://commons.wikimedia.org/wiki/File:Iced_Americano_1.jpg) | Challapramod | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
-| `te-chai.jpg` | [Chai latte - Cafe Coho, Queens Road, Brighton 2024-03-06](https://commons.wikimedia.org/wiki/File:Chai_latte_-_Cafe_Coho,_Queens_Road,_Brighton_2024-03-06.jpg) | Andy Li | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) (dominio público) |
+Origen y licencia de las fotos: `[completar]`.
 
-Las licencias BY-SA piden que las versiones modificadas de esas dos fotos se compartan con la misma licencia (CC BY-SA 4.0).
-
-Estas fotos reemplazaron a las del Sprint 1 con los mismos nombres de archivo. En `datos.js` las rutas llevan `?v=3` (subir el número cuando se cambie una foto) para que el navegador no muestre la versión vieja guardada en caché.
+En `datos.js` las rutas llevan `?v=4` (subir el número cuando se cambie una foto) para que el navegador no muestre la versión vieja guardada en caché.
