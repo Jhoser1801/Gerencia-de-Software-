@@ -295,11 +295,11 @@ function pintarPago() {
     ${pago.error ? `<p class="aviso" role="alert">${escapar(pago.error)}</p>` : ""}
     ${pagado ? `<p><a href="#consulta">Ver mi pedido</a> · <a href="#menu">Hacer otro pedido</a></p>` : `
     <form class="form-pago" onsubmit="pagar(event)">
-      <fieldset ${pago.procesando ? "disabled" : ""}><legend>${escapar(Pasarela.nombre)} · elige un medio de prueba</legend>
+      <fieldset ${pago.procesando ? "disabled" : ""}><legend>${escapar(Pasarela.nombre)} · elige el medio de pago</legend>
         ${Pasarela.mediosDePrueba.map((m, n) => `<label class="medio"><input type="radio" name="medio" value="${m.id}" ${n === 0 ? "checked" : ""}> ${escapar(m.etiqueta)}</label>`).join("")}
       </fieldset>
       <button class="btn" type="submit" ${pago.procesando ? "disabled" : ""}>${pago.procesando ? "Procesando pago…" : "Pagar " + dinero(pedido.total)}</button>
-      <p class="peq">No se piden ni se guardan datos de tarjeta. Es una pasarela de prueba: no se mueve dinero real.</p>
+      <p class="peq">Lattely no pide ni guarda datos de tarjeta.</p>
     </form>`}`;
 }
 

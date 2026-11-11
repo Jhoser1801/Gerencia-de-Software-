@@ -2,16 +2,16 @@
 // Si después usamos una pasarela de verdad, solo hay que cambiar este archivo.
 
 const PasarelaSimulada = {
-  nombre: "Pasarela simulada (modo prueba)",
+  nombre: "Pasarela de pagos",
   mediosDePrueba: [
-    { id: "aprobada",  etiqueta: "Tarjeta de prueba · aprobada",  resultado: "Aprobado" },
-    { id: "rechazada", etiqueta: "Tarjeta de prueba · rechazada", resultado: "Rechazado" },
-    { id: "pendiente", etiqueta: "Pago de prueba · queda pendiente", resultado: "Pendiente" }
+    { id: "aprobada",  etiqueta: "Tarjeta · pago aprobado",  resultado: "Aprobado" },
+    { id: "rechazada", etiqueta: "Tarjeta · pago rechazado", resultado: "Rechazado" },
+    { id: "pendiente", etiqueta: "Transferencia · pago pendiente", resultado: "Pendiente" }
   ],
   cobrar({ monto, referenciaPedido, medio }) {
     return new Promise((resolver, rechazar) => {
       const elegido = this.mediosDePrueba.find(m => m.id === medio);
-      if (!elegido) return rechazar(new Error("Elige un medio de pago de prueba."));
+      if (!elegido) return rechazar(new Error("Elige un medio de pago."));
       if (!Number.isInteger(monto) || monto <= 0) return rechazar(new Error("El monto a pagar no es válido."));
       if (!referenciaPedido) return rechazar(new Error("Falta el código del pedido."));
       setTimeout(() => resolver({

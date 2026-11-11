@@ -4,7 +4,14 @@ Equipo: Jhoser Briceño (backend y coordinación), Stevan Alarcón (bases de dat
 Versión presentada: `<commit o ZIP>`. Jira: proyecto SCRUM.
 
 ## Qué hace
-Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → confirmar pedido → pagar con pasarela de prueba → consultar el pedido con su código.
+Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → confirmar pedido → pagar con la pasarela → consultar el pedido con su código.
+
+## Documentación
+- [Manual de uso](docs/MANUAL_DE_USO.md)
+- [Arquitectura y flujos](docs/ARQUITECTURA.md)
+- [Kit de auditoría](docs/KIT_AUDITORIA.md)
+- [Informe de cierre (borrador)](docs/INFORME_DE_CIERRE.md)
+- [Requisitos (SRS IEEE 830)](docs/Lattely_SRS_IEEE830.docx)
 
 ## Requisitos
 - Navegador moderno (Chrome, Edge, Firefox o Safari). Sin Node, sin build, sin dependencias.
@@ -31,14 +38,14 @@ Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada 
 - Tamaños: Pequeño, Mediano, Grande, sin recargo (Jira no define recargo por tamaño).
 - Leche: Entera $0, Deslactosada $0, Almendras +$2.000.
 - Pedidos de ejemplo (solo en Supabase): `LAT-DEMO01` ($11.000, pagado) y `LAT-DEMO02` ($9.000, pago rechazado, se puede pagar).
-- Medios de la pasarela simulada: "Tarjeta de prueba · aprobada", "· rechazada" y "Pago de prueba · queda pendiente".
+- Medios de la pasarela simulada: "Tarjeta · pago aprobado", "Tarjeta · pago rechazado" y "Transferencia · pago pendiente".
 
 ## Recorrido de prueba
 1. Latte → + Agregar → Mediano → Almendras → Agregar al carrito ($7.200).
 2. Americano Frío → Pequeño → Agregar. Total $11.000.
 3. Subir la cantidad del Latte a 3 → subtotal del ítem $21.600, total $25.400.
 4. Confirmar pedido → revisar el resumen → Confirmar y pagar. Anotar el código `LAT-XXXXXX`.
-5. Pagar con "rechazada" → pedido sigue sin pagar. Pagar con "aprobada" → pedido Pagado.
+5. Pagar con "Tarjeta · pago rechazado" → pedido sigue sin pagar. Pagar con "Tarjeta · pago aprobado" → pedido Pagado.
 6. Mi pedido → escribir el código → Consultar.
 
 ## Archivos
