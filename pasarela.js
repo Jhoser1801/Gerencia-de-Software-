@@ -1,26 +1,42 @@
-// Pasarela de pagos de prueba (SCRUM-45). No pide datos de tarjeta ni mueve dinero real.
-// Si después usamos una pasarela de verdad, solo hay que cambiar este archivo.
+// Pasarela de pagos de Lattely (SCRUM-45). No usa ninguna API externa ni pide datos de tarjeta.
+// Dos medios de pago:
+//   - Pagar al recoger: el cliente paga en caja con el código del pedido.
+//   - Transferencia: el cliente transfiere a la llave de Lattely y escribe el número de referencia.
+// En los dos casos el pago queda "Pendiente" hasta que la cafetería lo revisa y lo aprueba o lo rechaza
+// desde la vista "Cafetería" (api.js: resolverPago).
 
-const PasarelaSimulada = {
-  nombre: "Pasarela de pagos",
-  mediosDePrueba: [
-    { id: "aprobada",  etiqueta: "Tarjeta · pago aprobado",  resultado: "Aprobado" },
-    { id: "rechazada", etiqueta: "Tarjeta · pago rechazado", resultado: "Rechazado" },
-    { id: "pendiente", etiqueta: "Transferencia · pago pendiente", resultado: "Pendiente" }
-  ],
-  cobrar({ monto, referenciaPedido, medio }) {
-    return new Promise((resolver, rechazar) => {
-      const elegido = this.mediosDePrueba.find(m => m.id === medio);
-      if (!elegido) return rechazar(new Error("Elige un medio de pago."));
-      if (!Number.isInteger(monto) || monto <= 0) return rechazar(new Error("El monto a pagar no es válido."));
-      if (!referenciaPedido) return rechazar(new Error("Falta el código del pedido."));
-      setTimeout(() => resolver({
-        estado: elegido.resultado,
-        referencia: "SIM-" + nuevoUUID().replace(/-/g, "").slice(0, 12).toUpperCase(),
-        metodo: "Simulada: " + elegido.etiqueta
-      }), 900);
-    });
-  }
+const DATOS_TRANSFERENCIA = {
+  llave: "@lattely",
+  titular: "Lattely Café",
+  medios: "Nequi, Daviplata o cualquier banco con llave Bre-B"
 };
 
-const Pasarela = PasarelaSimulada;
+const MEDIOS_PAGO = [
+  { id: "recoger", nombre: "Pagar al recoger", detalle: "Pagas en caja con efectivo o tarjeta cuando recojas tu pedido." },
+  { id: "transferencia", nombre: "Transferencia", detalle: "Nequi, Daviplata o llave Bre-B. Después escribes el número de referencia." }
+];
+
+function validarReferenciaTransferencia(referencia) {
+  const r = String(referencia || "").trim();
+  if (!r) return "Escribe el número de referencia que te dio tu banco.";
+  if (!/^[A-Za-z0-9-]{6,20}$/.test(r)) return "La referencia debe tener entre 6 y 20 letras o números, sin espacios.";
+  return "";
+}
+
+const Pasarela = {
+  medios: MEDIOS_PAGO,
+  transferencia: DATOS_TRANSFERENCIA,
+  // Devuelve el pago pendiente que se guarda con api.js (registrarPago)
+  iniciarPago({ monto, referenciaPedido, medio, referenciaTransferencia }) {
+    const elegido = MEDIOS_PAGO.find(m => m.id === medio);
+    if (!elegido) throw new Error("Elige cómo quieres pagar.");
+    if (!Number.isInteger(monto) || monto <= 0) throw new Error("El monto a pagar no es válido.");
+    if (!referenciaPedido) throw new Error("Falta el código del pedido.");
+    if (medio === "transferencia") {
+      const error = validarReferenciaTransferencia(referenciaTransferencia);
+      if (error) throw new Error(error);
+      return { estado: "Pendiente", metodo: elegido.nombre, referencia: "TRF-" + String(referenciaTransferencia).trim().toUpperCase() };
+    }
+    return { estado: "Pendiente", metodo: elegido.nombre, referencia: "CAJA-" + nuevoUUID().replace(/-/g, "").slice(0, 10).toUpperCase() };
+  }
+};

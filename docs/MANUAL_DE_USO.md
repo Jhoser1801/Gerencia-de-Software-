@@ -31,15 +31,19 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 3. La aplicación muestra el **código del pedido** (`LAT-XXXXXX`). **Guárdalo**: sirve para consultar el pedido después.
 
 ### 2.4 Pagar
-1. En **Pagar pedido**, elegir el medio de pago:
+1. En **Pagar pedido**, elegir cómo pagar:
 
-   | Medio | Resultado |
-   |---|---|
-   | Tarjeta · pago aprobado | El pedido queda **Pagado** |
-   | Tarjeta · pago rechazado | No se cobra; el pedido sigue sin pagar y se puede intentar otra vez |
-   | Transferencia · pago pendiente | El pedido sigue **Confirmado** hasta que llegue un pago aprobado |
+   | Medio | Qué hacer | Estado del pago |
+   |---|---|---|
+   | Pagar al recoger | Pulsar **Confirmar pago al recoger**, mostrar el código en caja y pagar | **Pendiente en caja** |
+   | Transferencia | Transferir el total a la llave `@lattely` con el código del pedido en el mensaje, escribir el número de referencia del banco y pulsar **Enviar referencia** | **En verificación** |
 
-2. Pulsar **Pagar $…**. Lattely no pide datos de tarjeta.
+2. La cafetería revisa el pago. Si lo aprueba, el pedido queda **Pagado**. Si lo rechaza, no se cobra nada y se puede pagar de nuevo. **Actualizar estado del pago** muestra la respuesta. Lattely no pide datos de tarjeta.
+
+### Para la cafetería: aprobar pagos
+1. Ir a **Cafetería** (menú de arriba) y escribir el PIN.
+2. En la lista de **Pagos por revisar** aparece cada pedido con su total, el medio y la referencia.
+3. Pulsar **Aprobar** (o **Marcar pagado** si pagó en caja) cuando el dinero llegó, o **Rechazar** si no se encuentra la transferencia.
 
 ### 2.5 Consultar el pedido
 1. Ir a **Mi pedido** (menú de arriba).
@@ -54,8 +58,11 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 | "Tu carrito está vacío…" al confirmar | No hay bebidas en el carrito | Agregar al menos una bebida |
 | El botón **−** no hace nada | La cantidad ya es 1 | Usar **Quitar** para eliminar la bebida |
 | La cantidad no pasa de 20 | Es el máximo por bebida | Hacer otro pedido si se necesitan más |
-| "Pago rechazado…" | La pasarela rechazó el pago | Elegir otro medio y volver a pagar; el pedido no se pierde |
-| "Pago pendiente…" | La pasarela no confirmó el pago | Consultar el pedido más tarde o volver a pagar |
+| "Escribe el número de referencia…" o "La referencia debe tener entre 6 y 20…" | Falta la referencia o tiene espacios o símbolos | Copiar la referencia del comprobante del banco, sin espacios |
+| "Esa referencia ya se registró en otro pago." | La referencia ya se usó | Revisar el número del comprobante |
+| "Este pedido ya tiene un pago pendiente de revisión." | Ya hay un pago esperando a la cafetería | Esperar la revisión y pulsar **Actualizar estado del pago** |
+| "La cafetería rechazó el pago anterior…" | La cafetería no encontró la transferencia | Revisar la transferencia y pagar de nuevo; el pedido no se pierde |
+| "PIN incorrecto." (vista Cafetería) | El PIN no coincide | Escribir el PIN de la cafetería |
 | "Este pedido ya está pagado." | Se intentó pagar dos veces | No hay que hacer nada; el pedido ya está pagado |
 | "No encontramos ese pedido…" | El código está mal escrito o el pedido se hizo en otro navegador (modo local) | Revisar el código; en modo local, consultar desde el mismo navegador |
 | "No pudimos conectar con el servidor…" | Sin internet o proyecto de Supabase pausado | Revisar la conexión; abrir el proyecto en Supabase para reactivarlo |

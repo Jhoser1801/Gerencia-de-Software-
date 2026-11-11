@@ -1,11 +1,18 @@
 -- Base de datos de Lattely en Supabase (SCRUM-55, 56 y 57).
 -- Para usarlo: en Supabase abrir SQL Editor, pegar todo el archivo y darle Run.
 -- Ojo: si se vuelve a correr, borra todo y lo crea de nuevo, también los pedidos.
--- Desde la página solo se pueden usar las tres funciones de abajo, no las tablas directamente.
+-- Desde la página solo se pueden usar las funciones de abajo, no las tablas directamente.
+-- Pagos: el cliente solo registra pagos "Pendiente" (al recoger o por transferencia) y la cafetería,
+-- con su PIN (tabla ajustes), los aprueba o rechaza.
 
+drop function if exists public.resolver_pago(text, boolean, text);
+drop function if exists public.pagos_pendientes(text);
+drop function if exists public.pin_valido(text);
 drop function if exists public.registrar_pago(text, text, text, text);
+drop function if exists public.registrar_pago(text, text, text);
 drop function if exists public.consultar_pedido(text);
 drop function if exists public.confirmar_pedido(jsonb, uuid);
+drop table if exists public.ajustes cascade;
 drop table if exists public.pagos cascade;
 drop table if exists public.items_pedido cascade;
 drop table if exists public.pedidos cascade;
@@ -58,12 +65,22 @@ create table public.pagos (
   monto       integer     not null check (monto > 0),
   estado      text        not null check (estado in ('Aprobado', 'Rechazado', 'Pendiente')),
   referencia  text        not null unique,
-  metodo      text        not null,
-  creado_en   timestamptz not null default now()
+  metodo      text        not null check (metodo in ('Pagar al recoger', 'Transferencia')),
+  creado_en   timestamptz not null default now(),
+  revisado_en timestamptz
+);
+
+-- PIN de la vista "Cafetería". Cambiarlo antes de publicar:
+-- update ajustes set valor = 'nuevo PIN' where clave = 'pin_cafeteria';
+create table public.ajustes (
+  clave text primary key,
+  valor text not null
 );
 
 create index on public.items_pedido (pedido_id);
 create index on public.pagos (pedido_id);
+-- un pedido tiene como máximo un pago pendiente a la vez
+create unique index pagos_un_pendiente on public.pagos (pedido_id) where estado = 'Pendiente';
 
 -- nadie puede leer ni cambiar las tablas directamente desde la página (SCRUM-56)
 
@@ -72,8 +89,9 @@ alter table public.leches       enable row level security;
 alter table public.pedidos      enable row level security;
 alter table public.items_pedido enable row level security;
 alter table public.pagos        enable row level security;
+alter table public.ajustes      enable row level security;
 
-revoke all on public.productos, public.leches, public.pedidos, public.items_pedido, public.pagos
+revoke all on public.productos, public.leches, public.pedidos, public.items_pedido, public.pagos, public.ajustes
   from anon, authenticated;
 
 -- Guardar el pedido (SCRUM-42 y SCRUM-43). Los precios se calculan aquí y no se confía en los de la página.
@@ -210,9 +228,10 @@ as $$
   where p.codigo = upper(trim(p_codigo));
 $$;
 
--- Guardar cada intento de pago (SCRUM-46). Un pedido pagado ya no acepta más pagos.
+-- Guardar el pago que inicia el cliente (SCRUM-45 y 46). Siempre queda "Pendiente".
+-- Un pedido pagado ya no acepta más pagos y no puede tener dos pagos pendientes.
 
-create or replace function public.registrar_pago(p_codigo text, p_estado text, p_referencia text, p_metodo text)
+create or replace function public.registrar_pago(p_codigo text, p_referencia text, p_metodo text)
 returns jsonb
 language plpgsql
 security definer
@@ -228,17 +247,81 @@ begin
   if v_pedido.estado = 'Pagado' then
     raise exception 'Este pedido ya está pagado.';
   end if;
-  if p_estado not in ('Aprobado', 'Rechazado', 'Pendiente') then
-    raise exception 'Estado de pago no válido.';
+  if p_metodo is null or p_metodo not in ('Pagar al recoger', 'Transferencia') then
+    raise exception 'Medio de pago no válido.';
   end if;
   if coalesce(trim(p_referencia), '') = '' then
     raise exception 'Falta la referencia del pago.';
   end if;
+  if exists (select 1 from pagos where pedido_id = v_pedido.id and estado = 'Pendiente') then
+    raise exception 'Este pedido ya tiene un pago pendiente de revisión.';
+  end if;
+  if exists (select 1 from pagos where referencia = trim(p_referencia)) then
+    raise exception 'Esa referencia ya se registró en otro pago. Revisa el número que te dio tu banco.';
+  end if;
 
   insert into pagos (pedido_id, monto, estado, referencia, metodo)
-  values (v_pedido.id, v_pedido.total, p_estado, p_referencia, coalesce(p_metodo, 'Desconocido'));
+  values (v_pedido.id, v_pedido.total, 'Pendiente', trim(p_referencia), p_metodo);
 
-  if p_estado = 'Aprobado' then
+  return consultar_pedido(v_pedido.codigo);
+end;
+$$;
+
+-- Vista "Cafetería": revisar el PIN, listar los pagos pendientes y aprobarlos o rechazarlos
+
+create or replace function public.pin_valido(p_pin text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (select 1 from ajustes where clave = 'pin_cafeteria' and valor = coalesce(p_pin, ''));
+$$;
+
+create or replace function public.pagos_pendientes(p_pin text)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+begin
+  if not pin_valido(p_pin) then
+    raise exception 'PIN incorrecto.';
+  end if;
+  return coalesce((
+    select jsonb_agg(consultar_pedido(p.codigo) order by g.creado_en)
+    from pedidos p join pagos g on g.pedido_id = p.id
+    where g.estado = 'Pendiente' and p.estado <> 'Pagado'), '[]'::jsonb);
+end;
+$$;
+
+create or replace function public.resolver_pago(p_codigo text, p_aprobar boolean, p_pin text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_pedido pedidos%rowtype;
+  v_pago   pagos%rowtype;
+begin
+  if not pin_valido(p_pin) then
+    raise exception 'PIN incorrecto.';
+  end if;
+  select * into v_pedido from pedidos where codigo = upper(trim(p_codigo)) for update;
+  if not found then
+    raise exception 'No encontramos ese pedido.';
+  end if;
+  select * into v_pago from pagos where pedido_id = v_pedido.id and estado = 'Pendiente' for update;
+  if not found then
+    raise exception 'Este pedido no tiene un pago pendiente.';
+  end if;
+
+  update pagos set estado = case when p_aprobar then 'Aprobado' else 'Rechazado' end, revisado_en = now()
+  where id = v_pago.id;
+  if p_aprobar then
     update pedidos set estado = 'Pagado' where id = v_pedido.id;
   end if;
 
@@ -248,10 +331,15 @@ $$;
 
 revoke all on function public.confirmar_pedido(jsonb, uuid)              from public;
 revoke all on function public.consultar_pedido(text)                     from public;
-revoke all on function public.registrar_pago(text, text, text, text)     from public;
+revoke all on function public.registrar_pago(text, text, text)           from public;
+revoke all on function public.pin_valido(text)                           from public, anon, authenticated;
+revoke all on function public.pagos_pendientes(text)                     from public;
+revoke all on function public.resolver_pago(text, boolean, text)         from public;
 grant execute on function public.confirmar_pedido(jsonb, uuid)           to anon, authenticated;
 grant execute on function public.consultar_pedido(text)                  to anon, authenticated;
-grant execute on function public.registrar_pago(text, text, text, text)  to anon, authenticated;
+grant execute on function public.registrar_pago(text, text, text)        to anon, authenticated;
+grant execute on function public.pagos_pendientes(text)                  to anon, authenticated;
+grant execute on function public.resolver_pago(text, boolean, text)      to anon, authenticated;
 
 -- Datos de prueba, iguales a los de datos.js
 
@@ -261,12 +349,14 @@ insert into public.productos (id, nombre, precio) values
   (3, 'Americano Frío', 3800),
   (4, 'Té Chai',        4800);
 
+insert into public.ajustes (clave, valor) values ('pin_cafeteria', '2468');
+
 insert into public.leches (nombre, recargo) values
   ('Entera',        0),
   ('Deslactosada',  0),
   ('Almendras',  2000);
 
--- Dos pedidos de ejemplo: LAT-DEMO01 ya pagado ($11.000) y LAT-DEMO02 con el pago rechazado ($9.000)
+-- Dos pedidos de ejemplo: LAT-DEMO01 pagado por transferencia ($11.000) y LAT-DEMO02 con una transferencia rechazada ($9.000)
 do $$
 declare v_id uuid;
 begin
@@ -275,13 +365,13 @@ begin
   insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
     (v_id, 1, 'Latte',          'Mediano', 'Almendras', 1, 5200, 2000, 7200, 7200),
     (v_id, 3, 'Americano Frío', 'Pequeño', 'Entera',    1, 3800,    0, 3800, 3800);
-  insert into pagos (pedido_id, monto, estado, referencia, metodo)
-  values (v_id, 11000, 'Aprobado', 'SIM-DEMO-0001', 'Simulada: tarjeta de prueba aprobada');
+  insert into pagos (pedido_id, monto, estado, referencia, metodo, revisado_en)
+  values (v_id, 11000, 'Aprobado', 'TRF-DEMO0001', 'Transferencia', now());
 
   insert into pedidos (codigo, clave_idempotencia, subtotal, recargos, total)
   values ('LAT-DEMO02', gen_random_uuid(), 9000, 0, 9000) returning id into v_id;
   insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
     (v_id, 2, 'Cappuccino', 'Grande', 'Entera', 2, 4500, 0, 4500, 9000);
-  insert into pagos (pedido_id, monto, estado, referencia, metodo)
-  values (v_id, 9000, 'Rechazado', 'SIM-DEMO-0002', 'Simulada: tarjeta de prueba rechazada');
+  insert into pagos (pedido_id, monto, estado, referencia, metodo, revisado_en)
+  values (v_id, 9000, 'Rechazado', 'TRF-DEMO0002', 'Transferencia', now());
 end $$;

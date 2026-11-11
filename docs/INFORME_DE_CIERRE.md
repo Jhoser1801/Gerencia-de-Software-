@@ -35,7 +35,7 @@ Base: enunciado del docente (Lattely) y SRS.
 | Evitar compras sin configuración obligatoria | SCRUM-9, 42 | Entregado (P6, P18) |
 | Confirmación del pedido | SCRUM-42 | Entregado, sin duplicados por doble clic (P17) |
 | Conservar y consultar el pedido | SCRUM-43, 44 | Entregado en modo local; modo Supabase listo en `db/schema.sql`, `[completar: probado / no probado en Supabase]` |
-| Pasarela de pagos (API o funcionalidad de prueba) | SCRUM-45, 46 | Entregado como pasarela simulada con aprobado, rechazado y pendiente |
+| Pasarela de pagos (API o funcionalidad de prueba) | SCRUM-45, 46 | Entregado como funcionalidad sin API: pagar al recoger o transferencia con referencia, aprobados o rechazados por la cafetería con PIN |
 | Aviso de privacidad, celular y navegadores | SCRUM-47, 48 | Entregado; prueba en 4 navegadores pendiente (P26) |
 
 **No entregado (fuera del alcance de esta versión):** inventario (SCRUM-13, 15, 16), búsqueda y filtros (SCRUM-17, 18), y RF-01 y RF-04 a RF-09 del SRS. `[completar: motivo y decisión del equipo]`
@@ -105,15 +105,15 @@ Los riesgos de la tabla son una **propuesta**. Hay que revisar con el equipo la 
 |---|---|---|---|---|---|---|
 | C1 | 2026-11-04 | Reconstruir el backlog desde el SRS | Pérdida de las historias originales | Todo el backlog de Sprint 2 | `[completar]` | Aprobado |
 | C2 | `[completar]` | Imagen de la bebida según el tamaño (SCRUM-41) | `[completar]` | Ventana de personalización | `[completar]` | `[completar]` |
-| C3 | `[completar]` | Pasarela simulada en vez de una API de pagos real | El enunciado permite una funcionalidad de prueba | Pago | `[completar]` | `[completar]` |
+| C3 | 2026-11-11 | Cambiar la pasarela simulada (tarjeta aprobada / rechazada) por pagar al recoger y transferencia con referencia, revisadas por la cafetería | Que el pago se vea y funcione como en una cafetería real, sin usar una API | Pago, consulta y nueva vista Cafetería (SCRUM-45, 46) | `[completar]` | Aprobado por el equipo |
 
 ## 7. Resultados de pruebas y auditoría
-- **Pruebas automáticas:** 15 de 15 pasan (`node --test pruebas/logica.test.js`, ejecutadas el 2026-11-11).
+- **Pruebas automáticas:** 16 de 16 pasan (`node --test pruebas/logica.test.js`, ejecutadas el 2026-11-11).
 - **Casos funcionales:** P1 a P26 en el `README.md`, ejecutados en Chromium el 2026-11-11 en modo local. Quedan pendientes P26 en Edge, Firefox y Safari, y P19 contra Supabase si se usa ese modo.
 - **Auditoría cruzada (SCRUM-73):** grupo auditor `[completar]`. Hallazgos: `[completar]` defectos, `[completar]` sugerencias y `[completar]` fuera de alcance. Corregidos: `[completar]`. Registro completo en `docs/KIT_AUDITORIA.md`.
 
 ## 8. Limitaciones y mantenimiento
-- La pasarela es simulada: el resultado lo define el medio elegido. Para usar una pasarela real hay que cambiar `pasarela.js` y confirmar el pago en el servidor (webhook).
+- La pasarela no se conecta a un banco: la cafetería verifica cada transferencia a mano antes de aprobarla. En modo local el PIN de la cafetería está en `config.js` y solo sirve para la demostración; en Supabase está protegido en la base de datos.
 - En modo local, los pedidos solo existen en el navegador donde se hicieron.
 - No hay cuentas de usuario: el pedido se consulta solo con el código.
 - Las tres fotos de cada producto usan el mismo archivo escalado. Para usar fotos distintas por tamaño basta con cambiar las rutas en `datos.js`.

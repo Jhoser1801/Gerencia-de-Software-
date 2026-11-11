@@ -14,19 +14,19 @@ flowchart LR
   U([Cliente]) --> UI
 
   subgraph Navegador
-    UI["index.html + estilos.css<br/>vistas: menú, pago, consulta"]
+    UI["index.html + estilos.css<br/>vistas: menú, pago, consulta, cafetería"]
     APP["app.js<br/>estado, eventos y pintado"]
     LOG["logica.js<br/>precios, carrito, validaciones,<br/>calcularPedido()"]
     DAT["datos.js<br/>PRODUCTOS, TAMANOS, LECHES"]
     CFG["config.js<br/>URL y clave anon"]
     API{{"api.js<br/>Api = ApiSupabase o ApiLocal"}}
-    PAS["pasarela.js<br/>Pasarela.cobrar()"]
+    PAS["pasarela.js<br/>Pasarela.iniciarPago()"]
     LS[("localStorage<br/>carrito, último pedido,<br/>pedidos en modo local")]
   end
 
   subgraph Supabase
-    RPC["Funciones RPC (security definer)<br/>confirmar_pedido<br/>consultar_pedido<br/>registrar_pago"]
-    DB[("PostgreSQL con RLS<br/>productos, leches, pedidos,<br/>items_pedido, pagos")]
+    RPC["Funciones RPC (security definer)<br/>confirmar_pedido · consultar_pedido<br/>registrar_pago<br/>pagos_pendientes · resolver_pago (PIN)"]
+    DB[("PostgreSQL con RLS<br/>productos, leches, pedidos,<br/>items_pedido, pagos, ajustes")]
   end
 
   UI --> APP
@@ -45,9 +45,9 @@ flowchart LR
 | `estilos.css` | Diseño y adaptación a celular |
 | `datos.js` | Catálogo: productos, precios, tamaños, recargos de leche e imágenes |
 | `logica.js` | Funciones puras sin acceso al DOM: precio unitario, carrito, totales, validación y `calcularPedido()`. Es lo que prueban las pruebas automáticas |
-| `app.js` | Estado de la interfaz, acciones del usuario y navegación por `#menu`, `#pago` y `#consulta` |
+| `app.js` | Estado de la interfaz, acciones del usuario y navegación por `#menu`, `#pago`, `#consulta` y `#cafeteria` |
 | `api.js` | Persistencia de pedidos y pagos con la misma interfaz en los dos modos |
-| `pasarela.js` | Pasarela de pagos. Para usar una pasarela real basta con cambiar `cobrar()` |
+| `pasarela.js` | Pasarela sin API externa: pagar al recoger o transferencia con referencia. Siempre crea un pago **Pendiente** |
 | `db/schema.sql` | Tablas, RLS, funciones RPC y datos de ejemplo de Supabase |
 
 ## 2. Modelo de datos (Supabase)
@@ -86,14 +86,14 @@ erDiagram
     int subtotal "unitario x cantidad" }
   pagos { bigint id PK
     uuid pedido_id FK
-    text estado "Aprobado, Rechazado o Pendiente"
+    text estado "Pendiente, Aprobado o Rechazado"
     int monto
     text referencia "única"
     text metodo
     timestamptz creado_en }
 ```
 
-Seguridad: todas las tablas tienen RLS activado y se revocan los permisos directos. La clave `anon` solo puede ejecutar las tres funciones RPC. Los precios se recalculan en el servidor y la tabla `pagos` no tiene columnas para datos de tarjeta. Las columnas exactas están en `db/schema.sql`.
+Seguridad: todas las tablas tienen RLS activado y se revocan los permisos directos. La clave `anon` solo puede ejecutar las funciones RPC; `pagos_pendientes` y `resolver_pago` además exigen el PIN guardado en la tabla `ajustes`, que nadie puede leer desde la página. Un pedido tiene como máximo un pago pendiente (índice único parcial). Los precios se recalculan en el servidor y la tabla `pagos` no tiene columnas para datos de tarjeta. Las columnas exactas están en `db/schema.sql`.
 
 ## 3. Flujo: armar y confirmar el pedido
 
@@ -135,21 +135,24 @@ sequenceDiagram
   participant API as api.js
   participant S as Supabase / localStorage
 
-  C->>A: elige medio y pulsa Pagar
-  A->>P: cobrar(monto = total guardado, código, medio)
-  P-->>A: estado Aprobado, Rechazado o Pendiente, con referencia
-  A->>API: registrarPago(código, resultado)
+  actor K as Cafetería
+  C->>A: elige Pagar al recoger o Transferencia (con referencia)
+  A->>P: iniciarPago(monto = total guardado, código, medio, referencia)
+  P-->>A: pago Pendiente (o error si la referencia no es válida)
+  A->>API: registrarPago(código, pago)
   API->>S: registrar_pago
-  alt el pedido ya está Pagado
-    S-->>A: error "Este pedido ya está pagado."
+  alt pedido Pagado, ya hay un pago pendiente o referencia repetida
+    S-->>A: error con el motivo
   else
-    S->>S: guarda el intento en pagos (monto tomado del pedido)
-    opt estado Aprobado
-      S->>S: pedido.estado = Pagado
-    end
-    S-->>A: pedido actualizado
+    S->>S: guarda el pago Pendiente (monto tomado del pedido)
+    S-->>A: pedido con el pago en verificación o pendiente en caja
   end
-  A-->>C: mensaje de aprobado, rechazado o pendiente
+  K->>A: vista Cafetería con PIN
+  A->>API: pagosPendientes(PIN) y resolverPago(código, aprobar, PIN)
+  API->>S: resolver_pago
+  S->>S: pago Aprobado o Rechazado; si se aprueba, pedido Pagado
+  C->>A: Actualizar estado del pago o Mi pedido
+  A-->>C: Pagado, o aviso de rechazo para pagar de nuevo
 ```
 
 ## 5. Flujo: consulta
@@ -169,6 +172,7 @@ flowchart TD
 ```
 
 ## 6. Limitaciones conocidas
-- La pasarela no está conectada a un banco: el medio elegido define el resultado. Con una pasarela real, el resultado lo tendría que confirmar el servidor (webhook) y no el navegador.
+- La pasarela no está conectada a un banco: la cafetería verifica cada transferencia a mano en su cuenta antes de aprobarla.
+- En modo local el PIN de la cafetería está en `config.js`, que cualquiera puede leer; solo sirve para la demostración.
 - En modo local los pedidos solo existen en el navegador donde se hicieron.
 - No hay cuentas de usuario: quien conozca el código de un pedido puede consultarlo.

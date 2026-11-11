@@ -35,8 +35,9 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 
 - Tamaños: Pequeño, Mediano y Grande, sin recargo.
 - Leche: Entera $0, Deslactosada $0, Almendras +$2.000.
-- Medios de pago: "Tarjeta · pago aprobado", "Tarjeta · pago rechazado" y "Transferencia · pago pendiente".
-- Pedidos ya cargados (solo en modo Supabase): `LAT-DEMO01` ($11.000, pagado) y `LAT-DEMO02` ($9.000, pago rechazado).
+- Medios de pago: "Pagar al recoger" y "Transferencia". Referencias de transferencia válidas: de 6 a 20 letras o números, por ejemplo `M1234567` (no se repiten).
+- PIN de la vista **Cafetería** (para aprobar o rechazar pagos): `2468`.
+- Pedidos ya cargados (solo en modo Supabase): `LAT-DEMO01` ($11.000, pagado por transferencia) y `LAT-DEMO02` ($9.000, transferencia rechazada).
 - Código inexistente para probar: `LAT-NOEXIS`.
 
 ## 3. Alcance aprobado y criterios de aceptación
@@ -52,7 +53,8 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 | CA-07 | Confirmación | Un carrito vacío no se confirma. Un doble clic crea un solo pedido con código `LAT-XXXXXX` |
 | CA-08 | Persistencia | El pedido confirmado sigue disponible después de recargar la página |
 | CA-09 | Consulta | Un código existente muestra ítems, total y estados. Uno inexistente muestra "No encontramos ese pedido…" |
-| CA-10 | Pago | Rechazado: el pedido sigue sin pagar. Aprobado: queda Pagado. Pendiente: sigue Confirmado. Un pedido pagado no se puede pagar otra vez. El monto es el total del pedido |
+| CA-10 | Pago | Al recoger o por transferencia el pago queda pendiente y el pedido sigue Confirmado. Si la cafetería lo rechaza, se puede pagar de nuevo; si lo aprueba, el pedido queda Pagado y no acepta otro pago. Una referencia vacía, con espacios o repetida se rechaza. El monto es el total del pedido |
+| CA-13 | Seguridad del pago | Sin el PIN no se pueden ver ni aprobar pagos ("PIN incorrecto."); el cliente no puede marcar su propio pago como aprobado |
 | CA-11 | Privacidad | El aviso se abre y se cierra sin perder el carrito |
 | CA-12 | Celular | A 375 px de ancho no hay desplazamiento horizontal en menú, pago y consulta |
 

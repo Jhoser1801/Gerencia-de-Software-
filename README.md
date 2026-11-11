@@ -6,7 +6,7 @@ Versión presentada: `v1.0`. Jira: proyecto SCRUM.
 **Abrir en línea:** https://jhoser1801.github.io/Gerencia-de-Software-/
 
 ## Qué hace
-Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → confirmar pedido → pagar con la pasarela → consultar el pedido con su código.
+Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → confirmar pedido → pagar al recoger o por transferencia → la cafetería aprueba el pago → consultar el pedido con su código.
 
 ## Documentación
 - [Manual de uso](docs/MANUAL_DE_USO.md)
@@ -35,36 +35,39 @@ Sin configurar nada, la app arranca en **modo local**: guarda los pedidos en el 
 3. Project Settings → API → copiar **Project URL** y la clave **anon public** en `config.js`.
 4. Recargar `index.html`. Desde ese momento los pedidos se guardan en Supabase.
 
-Nunca poner la clave `service_role` en `config.js` ni en el repositorio. La clave `anon` es pública por diseño: con RLS solo puede llamar `confirmar_pedido`, `consultar_pedido` y `registrar_pago`; no puede leer ni escribir tablas directamente.
+Nunca poner la clave `service_role` en `config.js` ni en el repositorio. La clave `anon` es pública por diseño: con RLS solo puede llamar `confirmar_pedido`, `consultar_pedido`, `registrar_pago`, `pagos_pendientes` y `resolver_pago` (estas dos piden el PIN de la cafetería); no puede leer ni escribir tablas directamente.
 Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada entrega o sustentación.
 
 ## Datos de prueba
 - Productos (`datos.js` y `db/schema.sql`): Latte $5.200 · Cappuccino $4.500 · Americano Frío $3.800 · Té Chai $4.800.
 - Tamaños: Pequeño, Mediano, Grande, sin recargo (Jira no define recargo por tamaño).
 - Leche: Entera $0, Deslactosada $0, Almendras +$2.000.
-- Pedidos de ejemplo (solo en Supabase): `LAT-DEMO01` ($11.000, pagado) y `LAT-DEMO02` ($9.000, pago rechazado, se puede pagar).
-- Medios de la pasarela simulada: "Tarjeta · pago aprobado", "Tarjeta · pago rechazado" y "Transferencia · pago pendiente".
+- Pedidos de ejemplo (solo en Supabase): `LAT-DEMO01` ($11.000, pagado por transferencia) y `LAT-DEMO02` ($9.000, transferencia rechazada, se puede pagar).
+- Medios de pago: "Pagar al recoger" y "Transferencia" (llave `@lattely`; la referencia lleva de 6 a 20 letras o números, por ejemplo `M1234567`).
+- PIN de la vista **Cafetería**: `2468` (modo local: `config.js`; Supabase: tabla `ajustes`). Cambiarlo antes de una entrega real.
 
 ## Recorrido de prueba
 1. Latte → + Agregar → Mediano → Almendras → Agregar al carrito ($7.200).
 2. Americano Frío → Pequeño → Agregar. Total $11.000.
 3. Subir la cantidad del Latte a 3 → subtotal del ítem $21.600, total $25.400.
 4. Confirmar pedido → revisar el resumen → Confirmar y pagar. Anotar el código `LAT-XXXXXX`.
-5. Pagar con "Tarjeta · pago rechazado" → pedido sigue sin pagar. Pagar con "Tarjeta · pago aprobado" → pedido Pagado.
-6. Mi pedido → escribir el código → Consultar.
+5. Elegir **Transferencia** y escribir la referencia `M1234567` → el pago queda "En verificación".
+6. Ir a **Cafetería**, entrar con el PIN y **Rechazar** el pago → el cliente ve el aviso y puede pagar de nuevo.
+7. Volver a **Pagar**, elegir **Pagar al recoger** → "Pendiente en caja". En **Cafetería**, **Marcar pagado** → pedido Pagado.
+8. Mi pedido → escribir el código → Consultar.
 
 ## Archivos
 | Archivo | Contenido |
 |---|---|
-| `index.html` | Vistas de menú, pago y consulta; ventanas de personalización, resumen y privacidad |
+| `index.html` | Vistas de menú, pago, consulta y cafetería; ventanas de personalización, resumen y privacidad |
 | `estilos.css` | Estilos y diseño adaptable a celular |
 | `datos.js` | Productos, tamaños, recargos de leche y rutas de imagen |
 | `logica.js` | Lógica pura: precios, carrito con cantidades, validaciones, cálculo del pedido |
 | `config.js` | URL y clave anon de Supabase (vacías = modo local) |
-| `api.js` | Pedidos y pagos: `ApiSupabase` (RPC) y `ApiLocal` (localStorage), misma interfaz |
-| `pasarela.js` | Pasarela simulada; se cambia por una real implementando `cobrar()` |
+| `api.js` | Pedidos y pagos: `ApiSupabase` (RPC) y `ApiLocal` (localStorage), misma interfaz y mismas reglas |
+| `pasarela.js` | Pasarela sin API externa: pagar al recoger o transferencia con referencia (`iniciarPago()`) |
 | `app.js` | Estado, acciones y pintado de la interfaz |
-| `db/schema.sql` | Tablas, RLS, funciones `confirmar_pedido`, `consultar_pedido`, `registrar_pago` y datos |
+| `db/schema.sql` | Tablas, RLS, funciones `confirmar_pedido`, `consultar_pedido`, `registrar_pago`, `pagos_pendientes`, `resolver_pago` y datos |
 | `pruebas/logica.test.js` | Pruebas automáticas |
 | `img/` | Una foto por producto, 600×600, WebP con fondo transparente |
 
@@ -72,9 +75,11 @@ Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada 
 - **Precios en el servidor:** el navegador manda solo producto, tamaño, leche y cantidad. `confirmar_pedido` recalcula todo desde las tablas, así un precio manipulado no cambia el cobro.
 - **Sin pedidos duplicados:** cada carrito lleva una clave (UUID). Si llega dos veces (doble clic o reintento por red), se devuelve el mismo pedido. El botón además se deshabilita mientras confirma.
 - **Recargo sin duplicar (BUG-01):** precio unitario = precio base + recargo de leche, siempre desde el base. El subtotal del ítem es precio unitario × cantidad.
-- **Pagado una sola vez:** `registrar_pago` toma el monto del pedido guardado (no del navegador), guarda cada intento en `pagos` y rechaza nuevos pagos de un pedido ya pagado.
-- **Sin datos de tarjeta:** la pasarela simulada no los pide y la tabla `pagos` no tiene columnas para ellos.
-- **Limitación conocida:** en la pasarela simulada el resultado lo elige el navegador. Con una pasarela real, el resultado debe confirmarlo el servidor (webhook).
+- **Pasarela sin API:** el cliente elige **Pagar al recoger** o **Transferencia** (Nequi, Daviplata o llave Bre-B) y escribe la referencia del banco. El pago queda **Pendiente**; el navegador nunca puede marcarlo como aprobado.
+- **La cafetería decide:** en la vista **Cafetería**, con su PIN, aprueba o rechaza cada pago pendiente (`resolver_pago`). Solo al aprobar, el pedido pasa a **Pagado**.
+- **Pagado una sola vez:** el monto sale del pedido guardado (no del navegador), cada intento queda en `pagos`, un pedido tiene como máximo un pago pendiente y un pedido pagado no acepta más pagos. Una referencia de transferencia no se puede repetir.
+- **Sin datos de tarjeta:** no se piden y la tabla `pagos` no tiene columnas para ellos.
+- **Limitación conocida:** la cafetería verifica la transferencia mirando su cuenta; Lattely no se conecta al banco. En modo local el PIN está en `config.js`, que es público: solo sirve para la demostración. En Supabase el PIN está en la base de datos y no se puede leer desde la página.
 
 ## Imágenes por tamaño (SCRUM-14 / SCRUM-41)
 Cada producto define en `datos.js` su ruta por tamaño (`imagenes: { "Pequeño", "Mediano", "Grande" }`). Mientras no haya fotos reales, los tres tamaños usan el mismo archivo y `estilos.css` lo escala dentro de un recuadro fijo (proporción 70:100:130 = escalas 0,543 : 0,772 : 1). Sin tamaño elegido se muestra el Mediano. El tamaño no cambia el precio.
@@ -96,8 +101,8 @@ Presentación: la bebida está "apoyada" en la base del recuadro y crece o se en
 | Confirmar pedido | SCRUM-42 | Jhoser | `abrirResumen()`, `confirmarPedido()`, `validarCarrito()` | P17, P18 |
 | Guardar pedido | SCRUM-43 | Stevan | `db/schema.sql` `confirmar_pedido`, `api.js` | P19 |
 | Consultar pedido | SCRUM-44 | Camilo | `consultar()`, `consultar_pedido` | P20, P21 |
-| Pago por pasarela | SCRUM-45 | Jhoser | `pasarela.js`, `pagar()` | P22, P23 |
-| Registro del pago | SCRUM-46 | Stevan | `registrar_pago`, tabla `pagos` | P22 |
+| Pago por pasarela | SCRUM-45 | Jhoser | `pasarela.js`, `pagar()`, `pintarCafeteria()` | P22, P23, P27 |
+| Registro del pago | SCRUM-46 | Stevan | `registrar_pago`, `resolver_pago`, tabla `pagos` | P22, P27 |
 | Aviso de privacidad | SCRUM-47 | Camilo | `#privacidad` en `index.html` | P24 |
 | Celular y navegadores | SCRUM-48 | Camilo | `@media` en `estilos.css` | P25, P26 |
 
@@ -109,7 +114,7 @@ Pruebas automáticas (desde la carpeta `lattely`):
 ```
 node --test pruebas/logica.test.js
 ```
-**A** = prueba automática en Node (15 pasan). **N** = verificado en navegador (Chromium) en modo local; última ejecución 2026-11-11. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
+**A** = prueba automática en Node (16 pasan). **N** = verificado en navegador (Chromium) en modo local; última ejecución 2026-11-11. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
 
 | ID | Historia | Pasos | Esperado | Obtenido |
 |---|---|---|---|---|
@@ -134,11 +139,12 @@ node --test pruebas/logica.test.js
 | P19 | SCRUM-43 | Confirmar y recargar la página | El pedido sigue disponible con los mismos valores | A, N (local); Supabase Pendiente |
 | P20 | SCRUM-44 éxito | Consultar código existente | Ítems, total, estado del pedido y del pago | A, N |
 | P21 | SCRUM-44 inválido | Consultar `LAT-NOEXIS` | "No encontramos ese pedido…" | A, N |
-| P22 | SCRUM-45/46 | Pagar rechazada y luego aprobada | 2 intentos guardados, pedido Pagado una vez, monto = total | A, N |
-| P23 | SCRUM-45 límite | Pagar con "pendiente"; pagar un pedido ya pagado | Sigue Confirmado; "Este pedido ya está pagado." | A |
+| P22 | SCRUM-45/46 | Transferencia `M1234567`; la cafetería la rechaza; pagar al recoger; la cafetería lo aprueba | 2 intentos guardados, pedido Pagado una vez, monto = total | A, N |
+| P23 | SCRUM-45 inválido/límite | Referencia vacía o `12 34`; segundo pago con uno pendiente; referencia repetida; pagar un pedido ya pagado | Mensaje de error y no se guarda el pago; "Este pedido ya está pagado." | A, N |
 | P24 | SCRUM-47 | Abrir y cerrar el aviso con ítems en el carrito | Aviso visible; carrito y total se conservan | N |
 | P25 | SCRUM-48 celular | Ancho 375 px en menú, pago y consulta | Sin desplazamiento horizontal | N |
 | P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | N en Chromium (Chrome); Edge, Firefox y Safari Pendiente |
+| P27 | Seguridad del pago | Registrar un pago "Aprobado" desde el navegador; entrar a Cafetería con PIN `1111` | "Solo la cafetería puede aprobar…"; "PIN incorrecto." | A, N |
 
 ## Bugs observados
 - Al implementar la navegación entre vistas, el menú no se ocultaba al ir a "Pagar" porque `.layout{display:grid}` anulaba el atributo `hidden`. Corregido con `[hidden]{display:none!important}` en `estilos.css`.

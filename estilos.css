@@ -82,7 +82,17 @@ dialog .total,.tarjeta-pedido .total{font-size:1.25rem}
 .pagos{padding-left:1.2rem;font-size:.85rem}
 .form-pago fieldset{border:1px solid var(--linea);border-radius:10px;padding:1rem;margin:0 0 1rem;background:#fff}
 .form-pago legend{font-weight:700;padding:0 .3rem}
-.medio{display:flex;align-items:center;gap:.6rem;padding:.55rem 0;cursor:pointer}
+.medio{display:flex;align-items:flex-start;gap:.7rem;padding:.8rem;margin-bottom:.6rem;border:2px solid var(--linea);border-radius:10px;cursor:pointer;background:#fff}
+.medio input{margin-top:.25rem}.medio small{color:#6b5a4d}
+.medio.sel{border-color:var(--cafe);background:#faf4ee}
+.panel-transf{background:var(--fondo);border:1px dashed var(--linea);border-radius:10px;padding:.9rem;margin:.2rem 0 .4rem}
+.panel-transf p{margin:.2rem 0 .5rem}.panel-transf label{font-weight:700;display:block;margin:.6rem 0 .3rem}
+.panel-transf input{width:100%;box-sizing:border-box;padding:.65rem .8rem;border:1px solid var(--linea);border-radius:8px;background:#fff;color:var(--cafe);text-transform:uppercase}
+.btn.secundario{background:#fff;color:var(--cafe);border:2px solid var(--cafe)}
+.lista-pendientes{list-style:none;padding:0;margin:0}
+.pago-pendiente{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
+.pago-pendiente .acciones{display:flex;gap:.5rem}.pago-pendiente .acciones .btn{width:auto;padding:.5rem 1rem}
+.est-sin-pago{background:var(--tile)}
 .consulta label{font-weight:700;display:block;margin-bottom:.4rem}
 .consulta .fila{display:flex;gap:.6rem}
 .consulta input{flex:1;min-width:0;padding:.65rem .8rem;border:1px solid var(--linea);border-radius:8px;background:#fff;color:var(--cafe);text-transform:uppercase}

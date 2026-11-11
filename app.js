@@ -7,7 +7,7 @@ const carrito = rehidratarCarrito(leerLocal(LLAVE_CARRITO));
 let imagenActual = null;
 // Esta clave evita que un pedido se guarde dos veces si le dan doble clic a confirmar (SCRUM-42)
 const checkout = { clave: null, enviando: false, error: "" };
-const pago = { pedido: null, cargando: false, procesando: false, mensaje: null, error: "" };
+const pago = { pedido: null, cargando: false, procesando: false, mensaje: null, error: "", medio: "recoger", referencia: "" };
 const $ = id => document.getElementById(id);
 
 function leerLocal(llave) { try { return JSON.parse(localStorage.getItem(llave)); } catch { return null; } }
@@ -92,32 +92,80 @@ async function confirmarPedido() {
   }
 }
 
-// Pagar con la pasarela de prueba (SCRUM-45 y SCRUM-46)
-async function cargarPedidoParaPago() {
+// Pagar: al recoger o por transferencia (SCRUM-45 y SCRUM-46). El pago queda pendiente hasta que la cafetería lo revisa.
+async function cargarPedidoParaPago(forzar) {
   const codigo = leerLocal(LLAVE_ULTIMO);
-  if (pago.pedido && pago.pedido.codigo === codigo) return pintarPago();
+  if (!forzar && pago.pedido && pago.pedido.codigo === codigo) return pintarPago();
   if (!codigo) { pago.pedido = null; return pintarPago(); }
   pago.cargando = true; pintarPago();
   try { pago.pedido = await Api.consultarPedido(codigo); pago.error = ""; }
   catch (e) { pago.error = e.message; }
   pago.cargando = false; pintarPago();
 }
+function elegirMedio(medio) {
+  pago.medio = medio;
+  pago.error = "";
+  document.querySelectorAll(".form-pago .medio").forEach(l => l.classList.toggle("sel", l.dataset.medio === medio));
+  $("panel-transferencia").hidden = medio !== "transferencia";
+  $("btn-pagar").textContent = medio === "transferencia" ? "Enviar referencia" : "Confirmar pago al recoger";
+  $("error-pago").textContent = "";
+}
 async function pagar(evento) {
   evento.preventDefault();
   if (pago.procesando || !pago.pedido) return;
-  const medio = new FormData(evento.target).get("medio");
-  pago.procesando = true; pago.error = ""; pago.mensaje = null; pintarPago();
+  const datos = new FormData(evento.target);
+  pago.medio = datos.get("medio");
+  pago.referencia = String(datos.get("referencia") || "");
+  let solicitud;
   try {
-    // cobramos el total que quedó guardado en el pedido
-    const resultado = await Pasarela.cobrar({ monto: pago.pedido.total, referenciaPedido: pago.pedido.codigo, medio });
-    pago.pedido = await Api.registrarPago(pago.pedido.codigo, resultado);
-    pago.mensaje = resultado.estado;
+    // el monto es el total que quedó guardado en el pedido
+    solicitud = Pasarela.iniciarPago({ monto: pago.pedido.total, referenciaPedido: pago.pedido.codigo,
+                                        medio: pago.medio, referenciaTransferencia: pago.referencia });
+  } catch (e) {
+    $("error-pago").textContent = e.message;
+    if (pago.medio === "transferencia") $("referencia").focus();
+    return;
+  }
+  pago.procesando = true; pago.error = ""; pintarPago();
+  try {
+    pago.pedido = await Api.registrarPago(pago.pedido.codigo, solicitud);
+    pago.referencia = "";
   } catch (e) {
     pago.error = e.message;
     try { pago.pedido = await Api.consultarPedido(pago.pedido.codigo) || pago.pedido; } catch { }
   }
   pago.procesando = false; pintarPago();
 }
+
+// Vista "Cafetería": la cafetería aprueba o rechaza los pagos pendientes con su PIN
+const caf = { pin: null, pedidos: [], cargando: false, error: "", mensaje: "" };
+async function entrarCafeteria(evento) {
+  evento.preventDefault();
+  const pin = $("pin").value.trim();
+  if (!pin) { caf.error = "Escribe el PIN de la cafetería."; return pintarCafeteria(); }
+  caf.cargando = true; caf.error = ""; pintarCafeteria();
+  try { caf.pedidos = await Api.pagosPendientes(pin); caf.pin = pin; caf.mensaje = ""; }
+  catch (e) { caf.error = e.message; }
+  caf.cargando = false; pintarCafeteria();
+}
+async function actualizarCafeteria() {
+  if (!caf.pin) return pintarCafeteria();
+  caf.cargando = true; pintarCafeteria();
+  try { caf.pedidos = await Api.pagosPendientes(caf.pin); caf.error = ""; }
+  catch (e) { caf.error = e.message; }
+  caf.cargando = false; pintarCafeteria();
+}
+async function resolverPago(codigo, aprobar) {
+  if (caf.cargando) return;
+  caf.cargando = true; caf.mensaje = ""; pintarCafeteria();
+  try {
+    await Api.resolverPago(codigo, aprobar, caf.pin);
+    caf.mensaje = `Pedido ${codigo}: pago ${aprobar ? "aprobado" : "rechazado"}.`;
+    caf.pedidos = await Api.pagosPendientes(caf.pin); caf.error = "";
+  } catch (e) { caf.error = e.message; }
+  caf.cargando = false; pintarCafeteria();
+}
+function salirCafeteria() { caf.pin = null; caf.pedidos = []; caf.mensaje = ""; caf.error = ""; pintarCafeteria(); }
 
 // Buscar un pedido por su código (SCRUM-44)
 async function consultar(evento) {
@@ -142,13 +190,15 @@ function irAPagar(codigo) { guardarLocal(LLAVE_ULTIMO, codigo); pago.pedido = nu
 function abrirPrivacidad() { $("privacidad").showModal(); }
 function cerrarPrivacidad() { $("privacidad").close(); }
 
-// Cambia entre menú, pago y consulta según lo que diga la URL
+// Cambia entre menú, pago, consulta y cafetería según lo que diga la URL
 function mostrarVista() {
-  const vista = { "#pago": "pago", "#consulta": "consulta" }[location.hash] || "menu";
-  for (const v of ["menu", "pago", "consulta"]) $("vista-" + v).hidden = v !== vista;
+  const vista = { "#pago": "pago", "#consulta": "consulta", "#cafeteria": "cafeteria" }[location.hash] || "menu";
+  for (const v of ["menu", "pago", "consulta", "cafeteria"]) $("vista-" + v).hidden = v !== vista;
   $("nav-menu").classList.toggle("activo", vista === "menu");
   $("nav-consulta").classList.toggle("activo", vista === "consulta");
+  $("nav-cafeteria").classList.toggle("activo", vista === "cafeteria");
   if (vista === "pago") cargarPedidoParaPago();
+  if (vista === "cafeteria") { caf.mensaje = ""; actualizarCafeteria(); }
   if (vista === "consulta" && !$("codigo").value) $("codigo").value = leerLocal(LLAVE_ULTIMO) || "";
   window.scrollTo(0, 0);
 }
@@ -254,23 +304,30 @@ function pintarResumen() {
     <button class="cerrar" type="button" onclick="cerrarResumen()" ${checkout.enviando ? "disabled" : ""}>Seguir comprando</button>`;
 }
 
+// estado del último pago, como lo ve el cliente
 function htmlEstadoPago(pedido) {
   const ultimo = ultimoPago(pedido);
-  return ultimo ? ultimo.estado : "Sin pago";
+  if (!ultimo) return "Sin pago";
+  if (ultimo.estado === "Pendiente") return ultimo.metodo === "Transferencia" ? "En verificación" : "Pendiente en caja";
+  return ultimo.estado;
+}
+function claseEstadoPago(pedido) {
+  const ultimo = ultimoPago(pedido);
+  return "est-" + (ultimo ? ultimo.estado.toLowerCase() : "sin-pago");
 }
 function htmlPedido(pedido) {
   const fecha = new Date(pedido.creado_en).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
   return `<section class="tarjeta-pedido">
     <div class="cab-pedido"><div><small>Pedido</small><h2>${escapar(pedido.codigo)}</h2><small>${escapar(fecha)}</small></div>
       <div class="estados"><span class="estado est-${escapar(pedido.estado).toLowerCase()}">Pedido: ${escapar(pedido.estado)}</span>
-      <span class="estado est-${escapar(htmlEstadoPago(pedido)).toLowerCase().replace(" ", "-")}">Pago: ${escapar(htmlEstadoPago(pedido))}</span></div></div>
+      <span class="estado ${claseEstadoPago(pedido)}">Pago: ${escapar(htmlEstadoPago(pedido))}</span></div></div>
     <ul class="resumen-lista">${pedido.items.map(i => `<li><span>${i.cantidad} × ${escapar(i.nombre)}<br><small>${escapar(i.tamano)} · Leche ${escapar(i.leche)} · ${dinero(i.precio_unitario)} c/u</small></span>
       <strong>${dinero(i.subtotal)}</strong></li>`).join("")}</ul>
     <p class="linea"><span>Subtotal</span><span>${dinero(pedido.subtotal)}</span></p>
     <p class="linea"><span>Recargos</span><span>${dinero(pedido.recargos)}</span></p>
     <p class="linea total"><span>Total</span><span>${dinero(pedido.total)}</span></p>
     ${pedido.pagos && pedido.pagos.length ? `<details><summary>Intentos de pago (${pedido.pagos.length})</summary><ul class="pagos">
-      ${pedido.pagos.map(g => `<li>${escapar(g.estado)} · ${dinero(g.monto)} · ${escapar(g.referencia)}</li>`).join("")}</ul></details>` : ""}
+      ${pedido.pagos.map(g => `<li>${escapar(g.estado)} · ${escapar(g.metodo)} · ${dinero(g.monto)} · ${escapar(g.referencia)}</li>`).join("")}</ul></details>` : ""}
   </section>`;
 }
 
@@ -283,24 +340,69 @@ function pintarPago() {
       ${pago.error ? `<p class="aviso">${escapar(pago.error)}</p>` : ""}`;
     return;
   }
-  const mensajes = {
-    Aprobado: '<p class="ok" role="status">Pago aprobado. Tu pedido quedó pagado y ya se puede preparar.</p>',
-    Rechazado: '<p class="aviso" role="alert">Pago rechazado. No se hizo ningún cobro y tu pedido sigue sin pagar. Puedes intentarlo con otro medio.</p>',
-    Pendiente: '<p class="pendiente" role="status">Pago pendiente. La pasarela aún no confirma el pago; puedes consultar tu pedido más tarde o intentar de nuevo.</p>'
-  };
-  const pagado = pedido.estado === "Pagado";
-  zona.innerHTML = `<p class="nota">Guarda tu código <strong>${escapar(pedido.codigo)}</strong> para consultar tu pedido.</p>
-    ${htmlPedido(pedido)}
-    ${pago.mensaje ? mensajes[pago.mensaje] : ""}
-    ${pago.error ? `<p class="aviso" role="alert">${escapar(pago.error)}</p>` : ""}
-    ${pagado ? `<p><a href="#consulta">Ver mi pedido</a> · <a href="#menu">Hacer otro pedido</a></p>` : `
-    <form class="form-pago" onsubmit="pagar(event)">
-      <fieldset ${pago.procesando ? "disabled" : ""}><legend>${escapar(Pasarela.nombre)} · elige el medio de pago</legend>
-        ${Pasarela.mediosDePrueba.map((m, n) => `<label class="medio"><input type="radio" name="medio" value="${m.id}" ${n === 0 ? "checked" : ""}> ${escapar(m.etiqueta)}</label>`).join("")}
+  const ultimo = ultimoPago(pedido);
+  const codigo = escapar(pedido.codigo);
+  let estadoPago = "";
+  if (pedido.estado === "Pagado") {
+    estadoPago = `<p class="ok" role="status">Pago aprobado. Tu pedido quedó pagado y ya se puede preparar.</p>
+      <p><a href="#consulta">Ver mi pedido</a> · <a href="#menu">Hacer otro pedido</a></p>`;
+  } else if (ultimo && ultimo.estado === "Pendiente") {
+    estadoPago = (ultimo.metodo === "Transferencia"
+      ? `<p class="pendiente" role="status">Recibimos tu referencia ${escapar(ultimo.referencia.replace(/^TRF-/, ""))}. La cafetería está verificando la transferencia de ${dinero(ultimo.monto)}.</p>`
+      : `<p class="pendiente" role="status">Tu pedido quedó reservado. Muestra el código <strong>${codigo}</strong> en caja y paga ${dinero(ultimo.monto)} al recogerlo.</p>`)
+      + `<button class="btn ancho-auto" type="button" onclick="cargarPedidoParaPago(true)">Actualizar estado del pago</button>`;
+  } else {
+    const medio = pago.medio === "transferencia" ? "transferencia" : "recoger";
+    const t = Pasarela.transferencia;
+    estadoPago = `${ultimo && ultimo.estado === "Rechazado"
+        ? `<p class="aviso" role="alert">La cafetería rechazó el pago anterior (${escapar(ultimo.metodo)}). No se hizo ningún cobro; puedes intentarlo de nuevo.</p>` : ""}
+    <form class="form-pago" onsubmit="pagar(event)" novalidate>
+      <fieldset ${pago.procesando ? "disabled" : ""}><legend>Elige cómo pagar</legend>
+        ${Pasarela.medios.map(m => `<label class="medio${m.id === medio ? " sel" : ""}" data-medio="${m.id}">
+          <input type="radio" name="medio" value="${m.id}" ${m.id === medio ? "checked" : ""} onchange="elegirMedio('${m.id}')">
+          <span><strong>${escapar(m.nombre)}</strong><br><small>${escapar(m.detalle)}</small></span></label>`).join("")}
+        <div id="panel-transferencia" class="panel-transf" ${medio === "transferencia" ? "" : "hidden"}>
+          <p>Transfiere <strong>${dinero(pedido.total)}</strong> a la llave <strong>${escapar(t.llave)}</strong> (${escapar(t.titular)}) desde ${escapar(t.medios)}.</p>
+          <p class="nota">Escribe <strong>${codigo}</strong> en el mensaje de la transferencia.</p>
+          <label for="referencia">Número de referencia de la transferencia</label>
+          <input id="referencia" name="referencia" placeholder="M12345678" maxlength="20" autocomplete="off" value="${escapar(pago.referencia)}" oninput="$('error-pago').textContent=''">
+        </div>
+        <p id="error-pago" class="aviso" role="alert"></p>
       </fieldset>
-      <button class="btn" type="submit" ${pago.procesando ? "disabled" : ""}>${pago.procesando ? "Procesando pago…" : "Pagar " + dinero(pedido.total)}</button>
+      <button id="btn-pagar" class="btn" type="submit" ${pago.procesando ? "disabled" : ""}>${pago.procesando ? "Enviando…" : medio === "transferencia" ? "Enviar referencia" : "Confirmar pago al recoger"}</button>
       <p class="peq">Lattely no pide ni guarda datos de tarjeta.</p>
-    </form>`}`;
+    </form>`;
+  }
+  zona.innerHTML = `<p class="nota">Guarda tu código <strong>${codigo}</strong> para consultar tu pedido.</p>
+    ${htmlPedido(pedido)}
+    ${pago.error ? `<p class="aviso" role="alert">${escapar(pago.error)}</p>` : ""}
+    ${estadoPago}`;
+}
+
+function pintarCafeteria() {
+  const zona = $("cafeteria");
+  const aviso = caf.error ? `<p class="aviso" role="alert">${escapar(caf.error)}</p>` : "";
+  if (!caf.pin) {
+    zona.innerHTML = `<form class="consulta" onsubmit="entrarCafeteria(event)">
+        <label for="pin">PIN de la cafetería</label>
+        <div class="fila"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" class="sin-mayus">
+        <button class="btn" type="submit" ${caf.cargando ? "disabled" : ""}>${caf.cargando ? "Entrando…" : "Entrar"}</button></div>
+      </form>${aviso}<p class="nota">Solo para el personal: aquí se aprueban o rechazan los pagos al recoger y las transferencias.</p>`;
+    return;
+  }
+  const lista = caf.pedidos.map(p => {
+    const g = ultimoPago(p);
+    const fecha = new Date(g.creado_en).toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
+    const c = escapar(p.codigo);
+    return `<li class="tarjeta-pedido pago-pendiente">
+      <div><strong>${c}</strong> · ${dinero(g.monto)}<br><small>${escapar(g.metodo)} · ${escapar(g.referencia)} · ${escapar(fecha)}</small></div>
+      <div class="acciones"><button class="btn" type="button" onclick="resolverPago('${c}', true)" ${caf.cargando ? "disabled" : ""}>${g.metodo === "Transferencia" ? "Aprobar" : "Marcar pagado"}</button>
+      <button class="btn secundario" type="button" onclick="resolverPago('${c}', false)" ${caf.cargando ? "disabled" : ""}>Rechazar</button></div></li>`;
+  }).join("");
+  zona.innerHTML = `${caf.mensaje ? `<p class="ok" role="status">${escapar(caf.mensaje)}</p>` : ""}${aviso}
+    ${caf.pedidos.length ? `<ul class="lista-pendientes">${lista}</ul>` : `<p class="nota">No hay pagos pendientes por revisar.</p>`}
+    <p><button class="btn ancho-auto" type="button" onclick="actualizarCafeteria()" ${caf.cargando ? "disabled" : ""}>${caf.cargando ? "Cargando…" : "Actualizar"}</button>
+    <button class="enlace en-linea" type="button" onclick="salirCafeteria()">Salir</button></p>`;
 }
 
 // Al abrir la página

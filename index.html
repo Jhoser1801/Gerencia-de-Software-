@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lattely · Tu cafetería online</title>
-  <link rel="stylesheet" href="estilos.css?v=4">
+  <link rel="stylesheet" href="estilos.css?v=5">
 </head>
 <body>
   <header class="top">
@@ -12,6 +12,7 @@
     <nav>
       <a id="nav-menu" href="#menu">Menú</a>
       <a id="nav-consulta" href="#consulta">Mi pedido</a>
+      <a id="nav-cafeteria" href="#cafeteria">Cafetería</a>
     </nav>
     <button class="carro" type="button" onclick="irAlCarrito()" aria-label="Ir al carrito">🛒 <span id="contador">0</span></button>
   </header>
@@ -55,6 +56,12 @@
     <div id="resultado-consulta" aria-live="polite"></div>
   </main>
 
+  <!-- pantalla de la cafetería: aprobar o rechazar pagos -->
+  <main id="vista-cafeteria" class="pagina" hidden>
+    <h1>Pagos por revisar</h1>
+    <div id="cafeteria"></div>
+  </main>
+
   <dialog id="modal" aria-labelledby="m-tit"><div id="detalle"></div></dialog>
 
   <dialog id="resumen" aria-labelledby="r-tit"><div id="resumen-cuerpo"></div></dialog>
@@ -63,20 +70,21 @@
     <h2 id="p-tit">Aviso de privacidad y términos</h2>
     <p>Lattely no te pide datos personales para hacer tu pedido. Solo guardamos los productos que elegiste,
        sus valores, la fecha, el código del pedido y el resultado del pago.</p>
-    <p>No guardamos números de tarjeta, códigos de seguridad ni fechas de vencimiento. El pago se hace con una
-       pasarela de prueba y no mueve dinero real.</p>
+    <p>Puedes pagar en caja al recoger o por transferencia. Si pagas por transferencia, guardamos el número de
+       referencia que escribes para que la cafetería verifique el pago. No pedimos ni guardamos números de tarjeta,
+       códigos de seguridad ni fechas de vencimiento.</p>
     <p>No compartimos tu información con terceros. Tratamos los datos según la Ley 1581 de 2012 de protección
        de datos personales de Colombia.</p>
     <p>Al confirmar aceptas que los precios son los del menú en pesos colombianos (COP) y que el pedido se
-       prepara cuando el pago queda aprobado.</p>
+       prepara cuando la cafetería aprueba el pago.</p>
     <button class="btn" type="button" onclick="cerrarPrivacidad()">Entendido</button>
   </dialog>
 
-  <script src="datos.js?v=4"></script>
-  <script src="logica.js?v=4"></script>
-  <script src="config.js?v=4"></script>
-  <script src="api.js?v=4"></script>
-  <script src="pasarela.js?v=4"></script>
-  <script src="app.js?v=4"></script>
+  <script src="datos.js?v=5"></script>
+  <script src="logica.js?v=5"></script>
+  <script src="config.js?v=5"></script>
+  <script src="api.js?v=5"></script>
+  <script src="pasarela.js?v=5"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>
