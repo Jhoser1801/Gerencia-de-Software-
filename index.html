@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lattely · Tu cafetería online</title>
+  <link rel="stylesheet" href="estilos.css?v=3">
+</head>
+<body>
+  <header class="top">
+    <a class="logo" href="#menu">LATTELY</a>
+    <nav>
+      <a id="nav-menu" href="#menu">Menú</a>
+      <a id="nav-consulta" href="#consulta">Mi pedido</a>
+    </nav>
+    <button class="carro" type="button" onclick="irAlCarrito()" aria-label="Ir al carrito">🛒 <span id="contador">0</span></button>
+  </header>
+
+  <p id="modo-local" class="modo-local" hidden>Modo local: los pedidos se guardan solo en este navegador. Configura Supabase en <code>config.js</code>.</p>
+
+  <div id="vista-menu" class="layout">
+    <main>
+      <h1>Nuestro menú</h1>
+      <p class="sub">Todo lo que necesitas para acompañar tu día.</p>
+      <div id="menu" class="grid"></div>
+    </main>
+    <aside id="pedido" aria-labelledby="t-ped" tabindex="-1">
+      <div class="ped-cab"><h2 id="t-ped">Tu Pedido</h2><span id="items" class="pill">0 items</span></div>
+      <ul id="lista"></ul>
+      <div class="ped-pie">
+        <p><span>Subtotal</span><strong id="subtotal">$0</strong></p>
+        <p class="peq"><span>Recargos</span><strong id="recargos">$0</strong></p>
+        <p class="total"><span>Total</span><strong id="total">$0</strong></p>
+        <p id="aviso-carrito" class="aviso" role="alert"></p>
+        <button id="btn-confirmar" class="btn" type="button" onclick="abrirResumen()">Confirmar pedido</button>
+        <button class="enlace" type="button" onclick="abrirPrivacidad()">Aviso de privacidad y términos</button>
+      </div>
+    </aside>
+  </div>
+
+  <!-- pantalla para pagar -->
+  <main id="vista-pago" class="pagina" hidden>
+    <h1>Pagar pedido</h1>
+    <div id="pago"></div>
+  </main>
+
+  <!-- pantalla para buscar un pedido -->
+  <main id="vista-consulta" class="pagina" hidden>
+    <h1>Consultar mi pedido</h1>
+    <form id="form-consulta" class="consulta" onsubmit="consultar(event)">
+      <label for="codigo">Código del pedido</label>
+      <div class="fila">
+        <input id="codigo" name="codigo" placeholder="LAT-XXXXXX" autocomplete="off" required maxlength="20">
+        <button class="btn" type="submit">Consultar</button>
+      </div>
+    </form>
+    <div id="resultado-consulta" aria-live="polite"></div>
+  </main>
+
+  <dialog id="modal" aria-labelledby="m-tit"><div id="detalle"></div></dialog>
+
+  <dialog id="resumen" aria-labelledby="r-tit"><div id="resumen-cuerpo"></div></dialog>
+
+  <dialog id="privacidad" aria-labelledby="p-tit">
+    <h2 id="p-tit">Aviso de privacidad y términos</h2>
+    <p>Lattely no te pide datos personales para hacer tu pedido. Solo guardamos los productos que elegiste,
+       sus valores, la fecha, el código del pedido y el resultado del pago.</p>
+    <p>No guardamos números de tarjeta, códigos de seguridad ni fechas de vencimiento. El pago se hace con una
+       pasarela de prueba y no mueve dinero real.</p>
+    <p>No compartimos tu información con terceros. Tratamos los datos según la Ley 1581 de 2012 de protección
+       de datos personales de Colombia.</p>
+    <p>Al confirmar aceptas que los precios son los del menú en pesos colombianos (COP) y que el pedido se
+       prepara cuando el pago queda aprobado.</p>
+    <button class="btn" type="button" onclick="cerrarPrivacidad()">Entendido</button>
+  </dialog>
+
+  <script src="datos.js?v=3"></script>
+  <script src="logica.js?v=3"></script>
+  <script src="config.js?v=3"></script>
+  <script src="api.js?v=3"></script>
+  <script src="pasarela.js?v=3"></script>
+  <script src="app.js?v=3"></script>
+</body>
+</html>
