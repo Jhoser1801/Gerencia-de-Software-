@@ -30,11 +30,12 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 |---|---|
 | Latte | $5.200 |
 | Cappuccino | $4.500 |
-| Americano Frío | $3.800 |
+| Café Americano | $3.800 |
 | Té Chai | $4.800 |
 
 - Tamaños: Pequeño, Mediano y Grande, sin recargo.
-- Leche (solo Latte y Cappuccino): Entera $0, Deslactosada $0, Almendras +$2.000. Té Chai y Americano Frío no llevan leche.
+- Leche (solo Latte y Cappuccino): Entera $0, Deslactosada $0, Almendras +$2.000. Té Chai y Café Americano no llevan leche.
+- Temperatura (solo Café Americano, obligatoria): Caliente o Frío, sin recargo.
 - Medios de pago: **PSE** (cualquier banco de la lista; en la pantalla del banco, **Pagar** aprueba y **Cancelar** rechaza) y **Pagar al recoger**.
 - PIN de la vista **Cafetería** (para marcar pagados o rechazar los pagos al recoger): `2468`.
 - Pedidos ya cargados (solo en modo Supabase): `LAT-DEMO01` ($11.000, pagado con PSE) y `LAT-DEMO02` ($9.000, pago PSE rechazado).
@@ -49,13 +50,14 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 | CA-03 | Leche y recargo | Latte + Almendras = $7.200. Cambiar de leche varias veces nunca suma el recargo dos veces |
 | CA-04 | Carrito | Al agregar, el contador sube. Quitar baja el total. Sin ítems se ve "Aún no has agregado nada a tu pedido." |
 | CA-05 | Cantidades | Entre 1 y 20 por ítem. Subtotal del ítem = precio unitario × cantidad |
-| CA-06 | Totales | Total = subtotal + recargos. Latte Almendras + Americano Pequeño = $11.000 |
+| CA-06 | Totales | Total = subtotal + recargos. Latte Almendras + Café Americano Pequeño = $11.000 |
 | CA-07 | Confirmación | Un carrito vacío no se confirma. Un doble clic crea un solo pedido con código `LAT-XXXXXX` |
 | CA-08 | Persistencia | El pedido confirmado sigue disponible después de recargar la página |
 | CA-09 | Consulta | Un código existente muestra ítems, total y estados. Uno inexistente muestra "No encontramos ese pedido…" |
 | CA-10 | Pago | PSE: sin banco aparece "Elige tu banco."; en la pantalla del banco se ven comercio, valor y CUS; **Pagar** deja el pedido Pagado y **Cancelar** lo deja sin pagar para intentar de nuevo. Al recoger: el pago queda "Pendiente en caja" hasta que la cafetería lo marca pagado. Un pedido pagado no acepta otro pago. El monto es el total del pedido |
 | CA-13 | Seguridad del pago | Sin el PIN no se pueden ver ni marcar pagos al recoger ("PIN incorrecto."); el cliente no puede aprobar su propio pago al recoger |
-| CA-14 | Bebidas sin leche | Té Chai y Americano Frío no muestran opciones de leche y no tienen recargo |
+| CA-14 | Bebidas sin leche | Té Chai y Café Americano no muestran opciones de leche y no tienen recargo |
+| CA-15 | Temperatura | El Café Americano no se agrega sin elegir Caliente o Frío; la temperatura se ve en el carrito, el resumen y el pedido; los demás productos no la piden |
 | CA-11 | Privacidad | El aviso se abre y se cierra sin perder el carrito |
 | CA-12 | Celular | A 375 px de ancho no hay desplazamiento horizontal en menú, pago y consulta |
 

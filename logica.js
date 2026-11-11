@@ -8,13 +8,21 @@ function productosValidos(lista) {
   return lista.filter(p => typeof p.precio === "number" && p.precio > 0);
 }
 function recargoLeche(leche) { return LECHES[leche] || 0; }
-// Té Chai y Americano Frío no llevan leche: no se elige y no tienen recargo
+// Té Chai y Café Americano no llevan leche: no se elige y no tienen recargo
 function admiteLeche(producto) { return !!producto && producto.usaLeche !== false; }
 // devuelve la leche que se guarda para ese producto, o null si no es válida
 function lecheValida(producto, leche) {
   if (!admiteLeche(producto)) return SIN_LECHE;
   return Object.prototype.hasOwnProperty.call(LECHES, leche) ? leche : null;
 }
+// Café Americano: hay que elegir si lo quieren caliente o frío. Los demás productos no tienen esta opción.
+function eligeTemperatura(producto) { return !!producto && producto.eligeTemperatura === true; }
+// devuelve la temperatura que se guarda (null si el producto no la usa) o undefined si falta o no es válida
+function temperaturaValida(producto, temperatura) {
+  if (!eligeTemperatura(producto)) return null;
+  return TEMPERATURAS.includes(temperatura) ? temperatura : undefined;
+}
+const AVISO_TEMPERATURA = "Faltan opciones por seleccionar: elige si lo quieres caliente o frío.";
 function precioUnitario(producto, leche) {
   // siempre partimos del precio base, así la leche de almendras no se suma dos veces (BUG-01)
   return producto.precio + (admiteLeche(producto) ? recargoLeche(leche) : 0);
@@ -29,17 +37,19 @@ function datosImagen(producto, tamano) {
 }
 
 // Carrito: si agregan la misma bebida igualita, solo sube la cantidad
-function agregarItem(carrito, producto, tamano, leche) {
+function agregarItem(carrito, producto, tamano, leche, temperatura) {
   if (!producto) return "Elige un producto.";
   if (!TAMANOS.includes(tamano)) return "Faltan opciones por seleccionar: elige un tamaño.";
+  temperatura = temperaturaValida(producto, temperatura);
+  if (temperatura === undefined) return AVISO_TEMPERATURA;
   leche = lecheValida(producto, leche);
   if (!leche) return "Elige un tipo de leche válido.";
-  const igual = carrito.find(i => i.idProducto === producto.id && i.tamano === tamano && i.leche === leche);
+  const igual = carrito.find(i => i.idProducto === producto.id && i.tamano === tamano && i.leche === leche && i.temperatura === temperatura);
   if (igual) {
     if (igual.cantidad >= MAX_CANTIDAD) return `Máximo ${MAX_CANTIDAD} unidades por producto.`;
     igual.cantidad += 1;
   } else {
-    carrito.push({ idProducto: producto.id, nombre: producto.nombre, tamano, leche,
+    carrito.push({ idProducto: producto.id, nombre: producto.nombre, tamano, leche, temperatura,
                    precioBase: producto.precio, recargo: recargoLeche(leche), cantidad: 1 });
   }
   return null;
@@ -78,8 +88,8 @@ function rehidratarCarrito(guardado) {
   for (const g of guardado) {
     const p = productosValidos(PRODUCTOS).find(x => x && g && x.id === g.idProducto);
     const cant = Number.isInteger(g && g.cantidad) ? Math.min(Math.max(g.cantidad, 1), MAX_CANTIDAD) : 1;
-    if (!p || !TAMANOS.includes(g.tamano) || !lecheValida(p, g.leche)) continue;
-    for (let n = 0; n < cant; n++) agregarItem(carrito, p, g.tamano, g.leche);
+    if (!p || !TAMANOS.includes(g.tamano) || !lecheValida(p, g.leche) || temperaturaValida(p, g.temperatura) === undefined) continue;
+    for (let n = 0; n < cant; n++) agregarItem(carrito, p, g.tamano, g.leche, g.temperatura);
   }
   return carrito;
 }
@@ -90,13 +100,15 @@ function validarCarrito(items) {
   for (const i of items) {
     if (!TAMANOS.includes(i.tamano)) return `Falta elegir el tamaño de ${i.nombre}.`;
     if (i.leche !== SIN_LECHE && !(i.leche in LECHES)) return `Falta elegir la leche de ${i.nombre}.`;
+    const p = PRODUCTOS.find(x => x.id === i.idProducto);
+    if (temperaturaValida(p, i.temperatura) === undefined) return `Falta elegir si quieres ${i.nombre} caliente o frío.`;
     if (!Number.isInteger(i.cantidad) || i.cantidad < 1 || i.cantidad > MAX_CANTIDAD) return `Cantidad no válida en ${i.nombre}.`;
   }
   return null;
 }
 // al guardar el pedido solo mandamos qué pidieron, los precios se vuelven a calcular
 function itemsParaPedido(items) {
-  return items.map(i => ({ producto_id: i.idProducto, tamano: i.tamano, leche: i.leche, cantidad: i.cantidad }));
+  return items.map(i => ({ producto_id: i.idProducto, tamano: i.tamano, leche: i.leche, temperatura: i.temperatura || null, cantidad: i.cantidad }));
 }
 function calcularPedido(itemsPedido) {
   if (!Array.isArray(itemsPedido) || !itemsPedido.length) throw new Error("El carrito está vacío.");
@@ -104,11 +116,13 @@ function calcularPedido(itemsPedido) {
     const p = productosValidos(PRODUCTOS).find(x => x.id === it.producto_id);
     if (!p) throw new Error("Hay un producto que no existe o no está disponible.");
     if (!TAMANOS.includes(it.tamano)) throw new Error(`Falta elegir el tamaño de ${p.nombre}.`);
+    const temperatura = temperaturaValida(p, it.temperatura);
+    if (temperatura === undefined) throw new Error(`Falta elegir si quieres ${p.nombre} caliente o frío.`);
     const leche = lecheValida(p, it.leche);
     if (!leche) throw new Error(`Tipo de leche no válido en ${p.nombre}.`);
     if (!Number.isInteger(it.cantidad) || it.cantidad < 1 || it.cantidad > MAX_CANTIDAD) throw new Error(`Cantidad no válida en ${p.nombre}.`);
     const recargo = recargoLeche(leche);
-    return { producto_id: p.id, nombre: p.nombre, tamano: it.tamano, leche, cantidad: it.cantidad,
+    return { producto_id: p.id, nombre: p.nombre, tamano: it.tamano, temperatura, leche, cantidad: it.cantidad,
              precio_unitario: p.precio + recargo, recargo_leche: recargo, subtotal: (p.precio + recargo) * it.cantidad };
   });
   const subtotal = items.reduce((s, i) => s + (i.precio_unitario - i.recargo_leche) * i.cantidad, 0);

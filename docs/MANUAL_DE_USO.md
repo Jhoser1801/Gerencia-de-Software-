@@ -16,8 +16,9 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 ### 2.1 Elegir y personalizar una bebida
 1. En **Nuestro menú**, pulsar **+ Agregar** en la bebida que quieras.
 2. En la ventana, elegir el **tamaño** (Pequeño, Mediano o Grande). Es obligatorio. El tamaño no cambia el precio, pero la foto cambia de tamaño.
-3. En Latte y Cappuccino, elegir la **leche**: Entera, Deslactosada o Almendras. La de almendras suma $2.000. Té Chai y Americano Frío no llevan leche, así que no aparece esa opción.
-4. Pulsar **Agregar al carrito**. El contador del carrito 🛒 sube.
+3. En Latte y Cappuccino, elegir la **leche**: Entera, Deslactosada o Almendras. La de almendras suma $2.000. Té Chai y Café Americano no llevan leche, así que no aparece esa opción.
+4. En el Café Americano, elegir la **temperatura**: Caliente o Frío. Es obligatorio y no cambia el precio.
+5. Pulsar **Agregar al carrito**. El contador del carrito 🛒 sube.
 
 ### 2.2 Revisar el carrito
 - En el panel **Tu Pedido** se ve cada bebida con su tamaño, su leche y su precio.
@@ -55,6 +56,7 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 | Mensaje o situación | Causa | Qué hacer |
 |---|---|---|
 | "Faltan opciones por seleccionar: elige un tamaño." al agregar | No se eligió tamaño | Elegir Pequeño, Mediano o Grande y volver a agregar |
+| "Faltan opciones por seleccionar: elige si lo quieres caliente o frío." | No se eligió la temperatura del Café Americano | Elegir Caliente o Frío y volver a agregar |
 | "Tu carrito está vacío…" al confirmar | No hay bebidas en el carrito | Agregar al menos una bebida |
 | El botón **−** no hace nada | La cantidad ya es 1 | Usar **Quitar** para eliminar la bebida |
 | La cantidad no pasa de 20 | Es el máximo por bebida | Hacer otro pedido si se necesitan más |

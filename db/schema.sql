@@ -26,7 +26,8 @@ create table public.productos (
   nombre  text    not null,
   precio  integer not null check (precio > 0),
   activo  boolean not null default true,
-  usa_leche boolean not null default true  -- false: Té Chai y Americano Frío, se guardan con 'Sin leche'
+  usa_leche boolean not null default true,  -- false: Té Chai y Café Americano, se guardan con 'Sin leche'
+  elige_temperatura boolean not null default false  -- true: Café Americano, se pide 'Caliente' o 'Frío'
 );
 
 create table public.leches (
@@ -53,6 +54,7 @@ create table public.items_pedido (
   producto_id     integer not null references public.productos(id),
   nombre          text    not null,
   tamano          text    not null check (tamano in ('Pequeño', 'Mediano', 'Grande')),
+  temperatura     text    check (temperatura in ('Caliente', 'Frío')),
   leche           text    not null references public.leches(nombre),
   cantidad        integer not null check (cantidad between 1 and 20),
   precio_base     integer not null check (precio_base > 0),
@@ -148,6 +150,9 @@ begin
     if v_prod.usa_leche and v_leche = 'Sin leche' then
       raise exception 'Tipo de leche no válido en %.', v_prod.nombre;
     end if;
+    if v_prod.elige_temperatura and coalesce(v_item->>'temperatura', '') not in ('Caliente', 'Frío') then
+      raise exception 'Falta elegir si quieres % caliente o frío.', v_prod.nombre;
+    end if;
     if v_tamano is null or v_tamano not in ('Pequeño', 'Mediano', 'Grande') then
       raise exception 'Falta elegir el tamaño de %.', v_prod.nombre;
     end if;
@@ -178,9 +183,10 @@ begin
     select recargo into v_recargo from leches where nombre = v_leche;
     v_cant := (v_item->>'cantidad')::integer;
 
-    insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad,
+    insert into items_pedido (pedido_id, producto_id, nombre, tamano, temperatura, leche, cantidad,
                               precio_base, recargo_leche, precio_unitario, subtotal)
-    values (v_pedido.id, v_prod.id, v_prod.nombre, v_item->>'tamano', v_leche, v_cant,
+    values (v_pedido.id, v_prod.id, v_prod.nombre, v_item->>'tamano',
+            case when v_prod.elige_temperatura then v_item->>'temperatura' end, v_leche, v_cant,
             v_prod.precio, v_recargo, v_prod.precio + v_recargo, (v_prod.precio + v_recargo) * v_cant);
   end loop;
 
@@ -216,6 +222,7 @@ as $$
                'producto_id',     i.producto_id,
                'nombre',          i.nombre,
                'tamano',          i.tamano,
+               'temperatura',     i.temperatura,
                'leche',           i.leche,
                'cantidad',        i.cantidad,
                'precio_unitario', i.precio_unitario,
@@ -364,11 +371,11 @@ grant execute on function public.resolver_pago(text, boolean, text)      to anon
 
 -- Datos de prueba, iguales a los de datos.js
 
-insert into public.productos (id, nombre, precio, usa_leche) values
-  (1, 'Latte',          5200, true),
-  (2, 'Cappuccino',     4500, true),
-  (3, 'Americano Frío', 3800, false),
-  (4, 'Té Chai',        4800, false);
+insert into public.productos (id, nombre, precio, usa_leche, elige_temperatura) values
+  (1, 'Latte',          5200, true,  false),
+  (2, 'Cappuccino',     4500, true,  false),
+  (3, 'Café Americano', 3800, false, true),
+  (4, 'Té Chai',        4800, false, false);
 
 insert into public.ajustes (clave, valor) values ('pin_cafeteria', '2468');
 
@@ -384,9 +391,9 @@ declare v_id uuid;
 begin
   insert into pedidos (codigo, clave_idempotencia, subtotal, recargos, total, estado)
   values ('LAT-DEMO01', gen_random_uuid(), 9000, 2000, 11000, 'Pagado') returning id into v_id;
-  insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
-    (v_id, 1, 'Latte',          'Mediano', 'Almendras', 1, 5200, 2000, 7200, 7200),
-    (v_id, 3, 'Americano Frío', 'Pequeño', 'Sin leche', 1, 3800,    0, 3800, 3800);
+  insert into items_pedido (pedido_id, producto_id, nombre, tamano, temperatura, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
+    (v_id, 1, 'Latte',          'Mediano', null,   'Almendras', 1, 5200, 2000, 7200, 7200),
+    (v_id, 3, 'Café Americano', 'Pequeño', 'Frío', 'Sin leche', 1, 3800,    0, 3800, 3800);
   insert into pagos (pedido_id, monto, estado, referencia, metodo, banco)
   values (v_id, 11000, 'Aprobado', 'PSE-1000000001', 'PSE', 'Bancolombia');
 

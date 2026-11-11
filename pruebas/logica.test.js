@@ -88,11 +88,11 @@ test("Misma bebida con la misma configuración se agrupa; distinta leche no", ()
   assert.equal(carrito[0].cantidad, 2);
 });
 
-test("HU-06: Latte Almendras + Americano Frío Pequeño = $11.000", () => {
+test("HU-06: Latte Almendras + Café Americano Pequeño frío = $11.000", () => {
   const app = cargarApp();
   const carrito = [];
   app("agregarItem")(carrito, producto(app, "Latte"), "Mediano", "Almendras");
-  app("agregarItem")(carrito, producto(app, "Americano Frío"), "Pequeño", "Entera");
+  app("agregarItem")(carrito, producto(app, "Café Americano"), "Pequeño", "Entera", "Frío");
   assert.equal(app("totalCarrito")(carrito), 11000);
 });
 
@@ -117,7 +117,7 @@ test("SCRUM-42/43: confirmar guarda el pedido y doble envío no lo duplica", asy
   const Api = app("Api");
   assert.equal(Api.modo, "local");
   const items = [{ producto_id: 1, tamano: "Mediano", leche: "Almendras", cantidad: 1 },
-                 { producto_id: 3, tamano: "Pequeño", leche: "Entera", cantidad: 1 }];
+                 { producto_id: 3, tamano: "Pequeño", leche: "Entera", temperatura: "Frío", cantidad: 1 }];
   const clave = app("nuevoUUID")();
   const [a, b] = await Promise.all([Api.confirmarPedido(items, clave), Api.confirmarPedido(items, clave)]);
   assert.equal(a.codigo, b.codigo);
@@ -202,14 +202,14 @@ test("SCRUM-45/46: PSE cancelado y luego aprobado = 2 registros y Pagado una sol
   await assert.rejects(Api.registrarPago(pedido.codigo, Pasarela.responderBanco(iniciar("Davivienda"), true)), /ya está pagado/);
 });
 
-test("Té Chai y Americano Frío no llevan leche ni recargo", async () => {
+test("Té Chai y Café Americano no llevan leche ni recargo", async () => {
   const app = cargarApp();
-  const te = producto(app, "Té Chai"), americano = producto(app, "Americano Frío");
+  const te = producto(app, "Té Chai"), americano = producto(app, "Café Americano");
   assert.equal(app("admiteLeche")(te), false);
   assert.equal(app("admiteLeche")(producto(app, "Latte")), true);
   assert.equal(app("precioUnitario")(te, "Almendras"), 4800);
   const carrito = [];
-  app("agregarItem")(carrito, americano, "Grande", "Almendras");
+  app("agregarItem")(carrito, americano, "Grande", "Almendras", "Caliente");
   assert.equal(carrito[0].leche, "Sin leche");
   assert.equal(app("totalCarrito")(carrito), 3800);
   assert.equal(app("validarCarrito")(carrito), null);
@@ -235,4 +235,37 @@ test("Seguridad: un pago al recoger solo lo aprueba la cafetería, con su PIN", 
   const pendientes = await Api.pagosPendientes(PIN);
   assert.deepEqual([...pendientes.map(p => p.codigo)], [pedido.codigo]);
   assert.equal((await Api.consultarPedido(pedido.codigo)).estado, "Confirmado");
+});
+
+test("Café Americano: hay que elegir caliente o frío; los demás productos no lo piden", async () => {
+  const app = cargarApp();
+  const americano = producto(app, "Café Americano");
+  assert.equal(app("eligeTemperatura")(americano), true);
+  assert.equal(app("eligeTemperatura")(producto(app, "Latte")), false);
+
+  const carrito = [];
+  assert.match(app("agregarItem")(carrito, americano, "Mediano", "Entera", null), /caliente o frío/);
+  assert.match(app("agregarItem")(carrito, americano, "Mediano", "Entera", "Tibio"), /caliente o frío/);
+  assert.equal(carrito.length, 0);
+
+  app("agregarItem")(carrito, americano, "Mediano", "Entera", "Caliente");
+  app("agregarItem")(carrito, americano, "Mediano", "Entera", "Frío");
+  app("agregarItem")(carrito, americano, "Mediano", "Entera", "Frío");
+  assert.equal(carrito.length, 2);
+  assert.equal(carrito[1].cantidad, 2);
+  assert.equal(app("totalCarrito")(carrito), 11400);
+
+  const latte = [];
+  app("agregarItem")(latte, producto(app, "Latte"), "Mediano", "Entera", "Frío");
+  assert.equal(latte[0].temperatura, null);
+
+  const Api = app("Api");
+  const p = await Api.confirmarPedido(app("itemsParaPedido")(carrito), app("nuevoUUID")());
+  assert.equal(p.items[0].temperatura, "Caliente");
+  assert.equal(p.items[1].temperatura, "Frío");
+  assert.equal(p.total, 11400);
+  await assert.rejects(Api.confirmarPedido([{ producto_id: 3, tamano: "Grande", leche: "Entera", cantidad: 1 }], app("nuevoUUID")()), /caliente o frío/);
+
+  const guardado = app("rehidratarCarrito")([{ idProducto: 3, tamano: "Grande", leche: "Entera", cantidad: 1 }]);
+  assert.equal(guardado.length, 0);
 });

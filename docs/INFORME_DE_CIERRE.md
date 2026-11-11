@@ -108,7 +108,7 @@ Los riesgos de la tabla son una **propuesta**. Hay que revisar con el equipo la 
 | C3 | 2026-11-11 | Cambiar la pasarela simulada (tarjeta aprobada / rechazada) por PSE y pagar al recoger (primero se probó transferencia con referencia y se reemplazó por PSE el mismo día) | Que el pago se vea y funcione como en una cafetería real, sin usar una API | Pago, consulta y nueva vista Cafetería (SCRUM-45, 46) | `[completar]` | Aprobado por el equipo |
 
 ## 7. Resultados de pruebas y auditoría
-- **Pruebas automáticas:** 17 de 17 pasan (`node --test pruebas/logica.test.js`, ejecutadas el 2026-11-11).
+- **Pruebas automáticas:** 18 de 18 pasan (`node --test pruebas/logica.test.js`, ejecutadas el 2026-11-11).
 - **Casos funcionales:** P1 a P26 en el `README.md`, ejecutados en Chromium el 2026-11-11 en modo local. Quedan pendientes P26 en Edge, Firefox y Safari, y P19 contra Supabase si se usa ese modo.
 - **Auditoría cruzada (SCRUM-73):** grupo auditor `[completar]`. Hallazgos: `[completar]` defectos, `[completar]` sugerencias y `[completar]` fuera de alcance. Corregidos: `[completar]`. Registro completo en `docs/KIT_AUDITORIA.md`.
 

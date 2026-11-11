@@ -5,8 +5,8 @@ let PRODUCTOS = [
     imagenes: { "Pequeño": "img/latte.webp?v=4", "Mediano": "img/latte.webp?v=4", "Grande": "img/latte.webp?v=4" } },
   { id: 2, nombre: "Cappuccino", precio: 4500, desc: "Espresso, leche y espuma cremosa.", icono: "☕",
     imagenes: { "Pequeño": "img/cappuccino.webp?v=4", "Mediano": "img/cappuccino.webp?v=4", "Grande": "img/cappuccino.webp?v=4" } },
-  { id: 3, nombre: "Americano Frío", precio: 3800, desc: "Café con hielo, ligero y fresco.", icono: "🧊", usaLeche: false,
-    imagenes: { "Pequeño": "img/americano-frio.webp?v=4", "Mediano": "img/americano-frio.webp?v=4", "Grande": "img/americano-frio.webp?v=4" } },
+  { id: 3, nombre: "Café Americano", precio: 3800, desc: "Café negro, caliente o con hielo.", icono: "☕", usaLeche: false, eligeTemperatura: true,
+    imagenes: { "Pequeño": "img/americano.webp?v=5", "Mediano": "img/americano.webp?v=5", "Grande": "img/americano.webp?v=5" } },
   { id: 4, nombre: "Té Chai", precio: 4800, desc: "Té negro con especias.", icono: "🍵", usaLeche: false,
     imagenes: { "Pequeño": "img/te-chai.webp?v=4", "Mediano": "img/te-chai.webp?v=4", "Grande": "img/te-chai.webp?v=4" } }
 ];
@@ -17,3 +17,5 @@ const TAMANOS = ["Pequeño", "Mediano", "Grande"];
 const LECHES = { "Entera": 0, "Deslactosada": 0, "Almendras": 2000 };
 // los productos con usaLeche: false no muestran opciones de leche y se guardan como "Sin leche"
 const SIN_LECHE = "Sin leche";
+// los productos con eligeTemperatura: true piden elegir si se sirven calientes o fríos (sin recargo)
+const TEMPERATURAS = ["Caliente", "Frío"];

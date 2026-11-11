@@ -1,6 +1,6 @@
 // Aquí está todo lo que se ve en pantalla y lo que pasa cuando la persona hace clic.
 
-const estado = { producto: null, tamano: null, leche: "Entera" };
+const estado = { producto: null, tamano: null, leche: "Entera", temperatura: null };
 const LLAVE_CARRITO = "lattely.carrito";
 const LLAVE_ULTIMO = "lattely.ultimoPedido";
 const carrito = rehidratarCarrito(leerLocal(LLAVE_CARRITO));
@@ -25,6 +25,7 @@ function elegirProducto(id) {
   estado.producto = productosValidos(PRODUCTOS).find(p => p.id === id) || null;
   estado.tamano = null;
   estado.leche = "Entera";
+  estado.temperatura = null;
   imagenActual = estado.producto ? datosImagen(estado.producto, null) : null;
   avisoModal = "";
   pintarDetalle();
@@ -38,14 +39,15 @@ function elegirTamano(t) {
   actualizarDetalle();
 }
 function elegirLeche(l) { estado.leche = l; actualizarDetalle(); }
+function elegirTemperatura(t) { estado.temperatura = t; avisoModal = ""; actualizarDetalle(); }
 function agregarAlCarrito() {
-  const error = agregarItem(carrito, estado.producto, estado.tamano, estado.leche);
+  const error = agregarItem(carrito, estado.producto, estado.tamano, estado.leche, estado.temperatura);
   if (error) { avisoModal = error; actualizarDetalle(); return; }
   carritoCambio();
   cerrarModal();
 }
 function cerrarModal() {
-  estado.producto = null; estado.tamano = null; estado.leche = "Entera"; imagenActual = null; avisoModal = "";
+  estado.producto = null; estado.tamano = null; estado.leche = "Entera"; estado.temperatura = null; imagenActual = null; avisoModal = "";
   if ($("modal").close && $("modal").open) $("modal").close();
   $("detalle").innerHTML = "";
   pintar();
@@ -231,6 +233,8 @@ function fotoMenu(producto) {
   return ruta ? `<img class="foto" src="${ruta}" alt="${producto.nombre}">` : producto.icono;
 }
 function textoLeche(leche) { return leche === SIN_LECHE ? SIN_LECHE : "Leche " + leche; }
+// tamaño · temperatura (si tiene) · leche, como se muestra en el carrito y en el pedido
+function textoOpciones(item) { return [item.tamano, item.temperatura, textoLeche(item.leche)].filter(Boolean).join(" · "); }
 
 function pintar() {
   const lista = productosValidos(PRODUCTOS);
@@ -242,7 +246,7 @@ function pintar() {
 
   $("lista").innerHTML = carrito.length
     ? carrito.map((i, n) => `<li><div class="marco marco-carro">${htmlImagen(PRODUCTOS.find(x => x.id === i.idProducto), i.tamano)}</div>
-        <span class="info"><strong>${i.nombre}</strong><br><small>${i.tamano} · ${textoLeche(i.leche)}</small><br>
+        <span class="info"><strong>${i.nombre}</strong><br><small>${escapar(textoOpciones(i))}</small><br>
           <small>${dinero(precioItem(i))} c/u</small> · <strong class="sub-item">${dinero(subtotalItem(i))}</strong>
           <span class="cantidad" role="group" aria-label="Cantidad de ${i.nombre}">
             <button type="button" onclick="cambiarCantidadItem(${n},-1)" aria-label="Disminuir cantidad de ${i.nombre}" ${i.cantidad <= 1 ? "disabled" : ""}>−</button>
@@ -280,6 +284,8 @@ function pintarDetalle() {
     <p>Tamaño</p>
     <div class="tamanos" role="radiogroup" aria-label="Tamaño">${TAMANOS.map(t =>
       `<button type="button" class="op tam" role="radio" data-tamano="${t}" onclick="elegirTamano('${t}')">${iconoVaso(t)}<span>${t}</span></button>`).join("")}</div>
+    ${eligeTemperatura(p) ? `<p>Temperatura</p><div class="temperaturas" role="radiogroup" aria-label="Temperatura">${TEMPERATURAS.map(t =>
+      `<button type="button" class="op" role="radio" data-temperatura="${t}" onclick="elegirTemperatura('${t}')">${t}</button>`).join("")}</div>` : ""}
     ${admiteLeche(p) ? `<p>Leche</p>${Object.keys(LECHES).map(l =>
       `<button type="button" class="op" role="radio" data-leche="${l}" onclick="elegirLeche('${l}')">${l}${LECHES[l] ? " (+" + dinero(LECHES[l]) + ")" : ""}</button>`).join("")}` : ""}
     <p id="aviso-modal" class="aviso" role="alert"></p>
@@ -306,6 +312,10 @@ function actualizarDetalle() {
     const sel = b.dataset.leche === estado.leche;
     b.classList.toggle("sel", sel); b.setAttribute("aria-checked", sel);
   });
+  document.querySelectorAll("#detalle [data-temperatura]").forEach(b => {
+    const sel = b.dataset.temperatura === estado.temperatura;
+    b.classList.toggle("sel", sel); b.setAttribute("aria-checked", sel);
+  });
   $("aviso-modal").textContent = avisoModal;
 }
 
@@ -313,7 +323,7 @@ function actualizarDetalle() {
 function pintarResumen() {
   const r = resumenCarrito(carrito);
   $("resumen-cuerpo").innerHTML = `<h2 id="r-tit">Confirma tu pedido</h2>
-    <ul class="resumen-lista">${carrito.map(i => `<li><span>${i.cantidad} × ${i.nombre}<br><small>${i.tamano} · ${textoLeche(i.leche)}${i.recargo ? " (+" + dinero(i.recargo) + " c/u)" : ""}</small></span>
+    <ul class="resumen-lista">${carrito.map(i => `<li><span>${i.cantidad} × ${i.nombre}<br><small>${escapar(textoOpciones(i))}${i.recargo ? " (+" + dinero(i.recargo) + " c/u)" : ""}</small></span>
       <strong>${dinero(subtotalItem(i))}</strong></li>`).join("")}</ul>
     <p class="linea"><span>Subtotal</span><span>${dinero(r.subtotal)}</span></p>
     <p class="linea"><span>Recargos</span><span>${dinero(r.recargos)}</span></p>
@@ -341,7 +351,7 @@ function htmlPedido(pedido) {
     <div class="cab-pedido"><div><small>Pedido</small><h2>${escapar(pedido.codigo)}</h2><small>${escapar(fecha)}</small></div>
       <div class="estados"><span class="estado est-${escapar(pedido.estado).toLowerCase()}">Pedido: ${escapar(pedido.estado)}</span>
       <span class="estado ${claseEstadoPago(pedido)}">Pago: ${escapar(htmlEstadoPago(pedido))}</span></div></div>
-    <ul class="resumen-lista">${pedido.items.map(i => `<li><span>${i.cantidad} × ${escapar(i.nombre)}<br><small>${escapar(i.tamano)} · ${escapar(textoLeche(i.leche))} · ${dinero(i.precio_unitario)} c/u</small></span>
+    <ul class="resumen-lista">${pedido.items.map(i => `<li><span>${i.cantidad} × ${escapar(i.nombre)}<br><small>${escapar(textoOpciones(i))} · ${dinero(i.precio_unitario)} c/u</small></span>
       <strong>${dinero(i.subtotal)}</strong></li>`).join("")}</ul>
     <p class="linea"><span>Subtotal</span><span>${dinero(pedido.subtotal)}</span></p>
     <p class="linea"><span>Recargos</span><span>${dinero(pedido.recargos)}</span></p>
@@ -449,7 +459,7 @@ function pintarCafeteria() {
 }
 
 // Al abrir la página
-$("modal").addEventListener("close", () => { estado.producto = null; estado.tamano = null; imagenActual = null; avisoModal = ""; $("detalle").innerHTML = ""; pintar(); });
+$("modal").addEventListener("close", () => { estado.producto = null; estado.tamano = null; estado.temperatura = null; imagenActual = null; avisoModal = ""; $("detalle").innerHTML = ""; pintar(); });
 $("resumen").addEventListener("cancel", e => { if (checkout.enviando) e.preventDefault(); });
 window.addEventListener("hashchange", mostrarVista);
 pintar();

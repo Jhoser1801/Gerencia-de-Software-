@@ -63,7 +63,8 @@ erDiagram
     text nombre
     int precio
     bool activo
-    bool usa_leche "false: Té Chai y Americano Frío" }
+    bool usa_leche "false: Té Chai y Café Americano"
+    bool elige_temperatura "true: Café Americano" }
   leches { text nombre PK
     int recargo }
   pedidos { uuid id PK
@@ -79,6 +80,7 @@ erDiagram
     int producto_id FK
     text nombre
     text tamano
+    text temperatura "Caliente, Frío o vacío"
     text leche FK
     int cantidad "1 a 20"
     int precio_base

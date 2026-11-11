@@ -39,9 +39,10 @@ Nunca poner la clave `service_role` en `config.js` ni en el repositorio. La clav
 Supabase pausa los proyectos gratuitos sin uso: abrir el proyecto antes de cada entrega o sustentación.
 
 ## Datos de prueba
-- Productos (`datos.js` y `db/schema.sql`): Latte $5.200 · Cappuccino $4.500 · Americano Frío $3.800 · Té Chai $4.800.
+- Productos (`datos.js` y `db/schema.sql`): Latte $5.200 · Cappuccino $4.500 · Café Americano $3.800 · Té Chai $4.800.
 - Tamaños: Pequeño, Mediano, Grande, sin recargo (Jira no define recargo por tamaño).
-- Leche (solo Latte y Cappuccino): Entera $0, Deslactosada $0, Almendras +$2.000. Té Chai y Americano Frío no llevan leche: no se muestra la opción y se guardan como "Sin leche".
+- Leche (solo Latte y Cappuccino): Entera $0, Deslactosada $0, Almendras +$2.000. Té Chai y Café Americano no llevan leche: no se muestra la opción y se guardan como "Sin leche".
+- Temperatura (solo Café Americano, obligatoria, sin recargo): Caliente o Frío.
 - Pedidos de ejemplo (solo en Supabase): `LAT-DEMO01` ($11.000, pagado con PSE) y `LAT-DEMO02` ($9.000, pago PSE rechazado, se puede pagar).
 - Medios de pago: **PSE** (elegir banco y tipo de persona; en la pantalla del banco, **Pagar** aprueba y **Cancelar** rechaza) y **Pagar al recoger**.
 - PIN de la vista **Cafetería** (pagos al recoger): `2468` (modo local: `config.js`; Supabase: tabla `ajustes`). Cambiarlo antes de una entrega real.
@@ -114,7 +115,7 @@ Pruebas automáticas (desde la carpeta `lattely`):
 ```
 node --test pruebas/logica.test.js
 ```
-**A** = prueba automática en Node (17 pasan). **N** = verificado en navegador (Chromium) en modo local; última ejecución 2026-11-11. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
+**A** = prueba automática en Node (18 pasan). **N** = verificado en navegador (Chromium) en modo local; última ejecución 2026-11-11. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
 
 | ID | Historia | Pasos | Esperado | Obtenido |
 |---|---|---|---|---|
@@ -128,7 +129,7 @@ node --test pruebas/logica.test.js
 | P8 | HU-04 éxito | Latte, Almendras | $7.200 | A, N |
 | P9 | HU-04 / BUG-01 | Alternar Almendras↔Entera varias veces | Siempre base +$2.000, nunca +$4.000 | A |
 | P10 | HU-05 éxito | Latte Mediano, Agregar | Contador 0→1 | N |
-| P11 | HU-06 éxito | Latte Almendras + Americano Frío Pequeño | Total $11.000 | A |
+| P11 | HU-06 éxito | Latte Almendras + Café Americano Pequeño frío | Total $11.000 | A |
 | P12 | SCRUM-14 éxito | Con 2 ítems, Quitar el Latte | Total $11.000 → $3.800, contador 2→1 | A (Sprint 1) |
 | P13 | SCRUM-14 límite | Quitar el último ítem | "Aún no has agregado nada a tu pedido.", total $0 | A (Sprint 1) |
 | P14 | SCRUM-41 | Sin tamaño y luego Pequeño, Mediano, Grande | Imagen 70:100:130 centrada, precio igual | A lógica (Sprint 1); N: altos 97, 137 y 178 px = 71:100:130, precio igual |
@@ -145,14 +146,15 @@ node --test pruebas/logica.test.js
 | P25 | SCRUM-48 celular | Ancho 375 px en menú, pago y consulta | Sin desplazamiento horizontal | N |
 | P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | N en Chromium (Chrome); Edge, Firefox y Safari Pendiente |
 | P27 | Seguridad del pago | Registrar un pago al recoger como "Aprobado" desde el navegador; PSE con un banco que no está en la lista; entrar a Cafetería con PIN `1111` | "Un pago al recoger solo lo aprueba la cafetería."; "Elige tu banco."; "PIN incorrecto." | A, N |
-| P28 | Bebidas sin leche | Abrir Té Chai y Americano Frío; enviar un pedido de Té Chai con leche Almendras | No se muestra la opción de leche; se guarda "Sin leche" sin recargo ($4.800 c/u) | A, N |
+| P28 | Bebidas sin leche | Abrir Té Chai y Café Americano; enviar un pedido de Té Chai con leche Almendras | No se muestra la opción de leche; se guarda "Sin leche" sin recargo ($4.800 c/u) | A, N |
+| P29 | Temperatura del Café Americano | Agregar un Café Americano Mediano sin elegir temperatura; luego elegir Frío | "…elige si lo quieres caliente o frío." y no se agrega; con Frío se agrega como "Mediano · Frío · Sin leche", $3.800 | A, N |
 
 ## Bugs observados
 - Al implementar la navegación entre vistas, el menú no se ocultaba al ir a "Pagar" porque `.layout{display:grid}` anulaba el atributo `hidden`. Corregido con `[hidden]{display:none!important}` en `estilos.css`.
 - BUG-01 (SCRUM-22) se previno calculando siempre desde el precio base; P9 lo confirma. Vincular P9 con SCRUM-10.
 
 ## Imágenes
-Una foto por producto en `img/`: `latte.webp`, `cappuccino.webp`, `americano-frio.webp` y `te-chai.webp`. Son PNG con fondo transparente que el equipo entregó, recortados al contorno de la taza, centrados en un lienzo cuadrado y reducidos a 600×600 en formato WebP (de 1,3 MB a menos de 60 KB cada uno). Los originales quedaron fuera del repositorio, en `Imagenes/originales_png/`.
+Una foto por producto en `img/`: `latte.webp`, `cappuccino.webp`, `americano.webp` y `te-chai.webp`. Son PNG con fondo transparente que el equipo entregó, recortados al contorno de la taza, centrados en un lienzo cuadrado y reducidos a 600×600 en formato WebP (de 1,3 MB a menos de 60 KB cada uno). Los originales quedaron fuera del repositorio, en `Imagenes/originales_png/`.
 
 Origen y licencia de las fotos: `[completar]`.
 
