@@ -171,36 +171,62 @@ test("SCRUM-45: pagar al recoger queda pendiente y la cafetería lo marca pagado
   await assert.rejects(Api.registrarPago(pedido.codigo, r3), /ya está pagado/);
 });
 
-test("SCRUM-45/46: transferencia rechazada y luego aprobada = 2 registros y Pagado una sola vez", async () => {
+test("SCRUM-45/46: PSE cancelado y luego aprobado = 2 registros y Pagado una sola vez", async () => {
   const app = cargarApp();
   const Api = app("Api"); const Pasarela = app("Pasarela");
   const pedido = await pedidoDePrueba(app);
-  const iniciar = ref => Pasarela.iniciarPago({ monto: pedido.total, referenciaPedido: pedido.codigo, medio: "transferencia", referenciaTransferencia: ref });
+  const iniciar = (banco, tipoPersona = "Natural") =>
+    Pasarela.iniciarPago({ monto: pedido.total, referenciaPedido: pedido.codigo, medio: "pse", banco, tipoPersona });
 
-  assert.throws(() => iniciar(""), /referencia/);
-  assert.throws(() => iniciar("12 34"), /6 y 20/);
-  assert.throws(() => iniciar("123"), /6 y 20/);
+  assert.throws(() => iniciar(""), /Elige tu banco/);
+  assert.throws(() => iniciar("Banco Inventado"), /Elige tu banco/);
+  assert.throws(() => iniciar("Bancolombia", ""), /tipo de persona/);
 
-  await Api.registrarPago(pedido.codigo, iniciar("m1234567"));
-  let actual = await Api.resolverPago(pedido.codigo, false, PIN);
+  const t1 = iniciar("Bancolombia");
+  assert.match(t1.cus, /^[1-9]\d{9}$/);
+  assert.equal(t1.monto, 4800);
+  let actual = await Api.registrarPago(pedido.codigo, Pasarela.responderBanco(t1, false));
   assert.equal(actual.estado, "Confirmado");
   assert.equal(app("ultimoPago")(actual).estado, "Rechazado");
 
-  await assert.rejects(Api.registrarPago(pedido.codigo, iniciar("M1234567")), /ya se registró/);
-  await Api.registrarPago(pedido.codigo, iniciar("M7654321"));
-  actual = await Api.resolverPago(pedido.codigo, true, PIN);
+  const t2 = iniciar("Nequi", "Jurídica");
+  const aprobado = Pasarela.responderBanco(t2, true);
+  actual = await Api.registrarPago(pedido.codigo, aprobado);
   assert.equal(actual.estado, "Pagado");
   assert.equal(actual.pagos.length, 2);
-  assert.equal(actual.pagos[1].referencia, "TRF-M7654321");
+  assert.equal(actual.pagos[1].banco, "Nequi");
+  assert.equal(actual.pagos[1].referencia, "PSE-" + t2.cus);
   assert.equal(actual.pagos[1].monto, 4800);
-  assert.ok(!JSON.stringify(actual).match(/tarjeta\s*\d|cvv/i));
+  assert.ok(!JSON.stringify(actual).match(/tarjeta\s*\d|cvv|contraseña|password/i));
+
+  await assert.rejects(Api.registrarPago(pedido.codigo, Pasarela.responderBanco(iniciar("Davivienda"), true)), /ya está pagado/);
 });
 
-test("Seguridad: el cliente no puede aprobar un pago y la cafetería necesita el PIN", async () => {
+test("Té Chai y Americano Frío no llevan leche ni recargo", async () => {
+  const app = cargarApp();
+  const te = producto(app, "Té Chai"), americano = producto(app, "Americano Frío");
+  assert.equal(app("admiteLeche")(te), false);
+  assert.equal(app("admiteLeche")(producto(app, "Latte")), true);
+  assert.equal(app("precioUnitario")(te, "Almendras"), 4800);
+  const carrito = [];
+  app("agregarItem")(carrito, americano, "Grande", "Almendras");
+  assert.equal(carrito[0].leche, "Sin leche");
+  assert.equal(app("totalCarrito")(carrito), 3800);
+  assert.equal(app("validarCarrito")(carrito), null);
+  const p = await app("Api").confirmarPedido([{ producto_id: 4, tamano: "Pequeño", leche: "Almendras", cantidad: 2 }], app("nuevoUUID")());
+  assert.equal(p.items[0].leche, "Sin leche");
+  assert.equal(p.recargos, 0);
+  assert.equal(p.total, 9600);
+  await assert.rejects(app("Api").confirmarPedido([{ producto_id: 1, tamano: "Pequeño", leche: "Sin leche", cantidad: 1 }], app("nuevoUUID")()), /leche no válido/);
+});
+
+test("Seguridad: un pago al recoger solo lo aprueba la cafetería, con su PIN", async () => {
   const app = cargarApp();
   const Api = app("Api");
   const pedido = await pedidoDePrueba(app, 1);
-  await assert.rejects(Api.registrarPago(pedido.codigo, { estado: "Aprobado", metodo: "Transferencia", referencia: "TRF-FALSO123" }), /Solo la cafetería/);
+  await assert.rejects(Api.registrarPago(pedido.codigo, { estado: "Aprobado", metodo: "Pagar al recoger", referencia: "CAJA-FALSO123" }), /solo lo aprueba la cafetería/);
+  await assert.rejects(Api.registrarPago(pedido.codigo, { estado: "Pendiente", metodo: "PSE", banco: "Nequi", referencia: "PSE-1" }), /Respuesta del banco/);
+  await assert.rejects(Api.registrarPago(pedido.codigo, { estado: "Aprobado", metodo: "PSE", banco: "Banco Falso", referencia: "PSE-2" }), /Elige tu banco/);
   await assert.rejects(Api.registrarPago(pedido.codigo, { estado: "Pendiente", metodo: "Tarjeta", referencia: "X-1" }), /no válido/);
 
   await Api.registrarPago(pedido.codigo, app("Pasarela").iniciarPago({ monto: pedido.total, referenciaPedido: pedido.codigo, medio: "recoger" }));

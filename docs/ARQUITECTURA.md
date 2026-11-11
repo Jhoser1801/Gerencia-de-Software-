@@ -47,7 +47,7 @@ flowchart LR
 | `logica.js` | Funciones puras sin acceso al DOM: precio unitario, carrito, totales, validación y `calcularPedido()`. Es lo que prueban las pruebas automáticas |
 | `app.js` | Estado de la interfaz, acciones del usuario y navegación por `#menu`, `#pago`, `#consulta` y `#cafeteria` |
 | `api.js` | Persistencia de pedidos y pagos con la misma interfaz en los dos modos |
-| `pasarela.js` | Pasarela sin API externa: pagar al recoger o transferencia con referencia. Siempre crea un pago **Pendiente** |
+| `pasarela.js` | Pasarela sin API externa: PSE (banco, tipo de persona, CUS y respuesta del banco) y pagar al recoger (pago **Pendiente**) |
 | `db/schema.sql` | Tablas, RLS, funciones RPC y datos de ejemplo de Supabase |
 
 ## 2. Modelo de datos (Supabase)
@@ -62,7 +62,8 @@ erDiagram
   productos { int id PK
     text nombre
     int precio
-    bool activo }
+    bool activo
+    bool usa_leche "false: Té Chai y Americano Frío" }
   leches { text nombre PK
     int recargo }
   pedidos { uuid id PK
@@ -88,8 +89,9 @@ erDiagram
     uuid pedido_id FK
     text estado "Pendiente, Aprobado o Rechazado"
     int monto
-    text referencia "única"
-    text metodo
+    text referencia "única: PSE-CUS o CAJA-…"
+    text metodo "PSE o Pagar al recoger"
+    text banco "solo PSE"
     timestamptz creado_en }
 ```
 
@@ -136,23 +138,31 @@ sequenceDiagram
   participant S as Supabase / localStorage
 
   actor K as Cafetería
-  C->>A: elige Pagar al recoger o Transferencia (con referencia)
-  A->>P: iniciarPago(monto = total guardado, código, medio, referencia)
-  P-->>A: pago Pendiente (o error si la referencia no es válida)
+  alt PSE
+    C->>A: elige PSE, banco y tipo de persona
+    A->>P: iniciarPago(monto = total guardado, código, pse, banco)
+    P-->>A: transacción con código CUS (o error "Elige tu banco.")
+    A-->>C: pantalla del banco: comercio, valor y CUS
+    C->>A: Pagar o Cancelar
+    A->>P: responderBanco(transacción, autorizado)
+    P-->>A: pago Aprobado o Rechazado (PSE-CUS)
+  else Pagar al recoger
+    C->>A: Confirmar pago al recoger
+    A->>P: iniciarPago(monto, código, recoger)
+    P-->>A: pago Pendiente (CAJA-…)
+  end
   A->>API: registrarPago(código, pago)
   API->>S: registrar_pago
-  alt pedido Pagado, ya hay un pago pendiente o referencia repetida
+  alt pedido Pagado, ya hay un pago pendiente o pago repetido
     S-->>A: error con el motivo
   else
-    S->>S: guarda el pago Pendiente (monto tomado del pedido)
-    S-->>A: pedido con el pago en verificación o pendiente en caja
+    S->>S: guarda el pago (monto tomado del pedido); si es Aprobado, pedido Pagado
+    S-->>A: pedido actualizado
   end
-  K->>A: vista Cafetería con PIN
+  K->>A: vista Cafetería con PIN (solo pagos al recoger)
   A->>API: pagosPendientes(PIN) y resolverPago(código, aprobar, PIN)
   API->>S: resolver_pago
   S->>S: pago Aprobado o Rechazado; si se aprueba, pedido Pagado
-  C->>A: Actualizar estado del pago o Mi pedido
-  A-->>C: Pagado, o aviso de rechazo para pagar de nuevo
 ```
 
 ## 5. Flujo: consulta
@@ -172,7 +182,7 @@ flowchart TD
 ```
 
 ## 6. Limitaciones conocidas
-- La pasarela no está conectada a un banco: la cafetería verifica cada transferencia a mano en su cuenta antes de aprobarla.
+- Lattely no se conecta a PSE: la pantalla del banco está dentro de la página y la respuesta (Pagar o Cancelar) la da el navegador. Con PSE real, el banco le avisaría al servidor.
 - En modo local el PIN de la cafetería está en `config.js`, que cualquiera puede leer; solo sirve para la demostración.
 - En modo local los pedidos solo existen en el navegador donde se hicieron.
 - No hay cuentas de usuario: quien conozca el código de un pedido puede consultarlo.

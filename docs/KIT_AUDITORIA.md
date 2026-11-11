@@ -34,10 +34,10 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 | Té Chai | $4.800 |
 
 - Tamaños: Pequeño, Mediano y Grande, sin recargo.
-- Leche: Entera $0, Deslactosada $0, Almendras +$2.000.
-- Medios de pago: "Pagar al recoger" y "Transferencia". Referencias de transferencia válidas: de 6 a 20 letras o números, por ejemplo `M1234567` (no se repiten).
-- PIN de la vista **Cafetería** (para aprobar o rechazar pagos): `2468`.
-- Pedidos ya cargados (solo en modo Supabase): `LAT-DEMO01` ($11.000, pagado por transferencia) y `LAT-DEMO02` ($9.000, transferencia rechazada).
+- Leche (solo Latte y Cappuccino): Entera $0, Deslactosada $0, Almendras +$2.000. Té Chai y Americano Frío no llevan leche.
+- Medios de pago: **PSE** (cualquier banco de la lista; en la pantalla del banco, **Pagar** aprueba y **Cancelar** rechaza) y **Pagar al recoger**.
+- PIN de la vista **Cafetería** (para marcar pagados o rechazar los pagos al recoger): `2468`.
+- Pedidos ya cargados (solo en modo Supabase): `LAT-DEMO01` ($11.000, pagado con PSE) y `LAT-DEMO02` ($9.000, pago PSE rechazado).
 - Código inexistente para probar: `LAT-NOEXIS`.
 
 ## 3. Alcance aprobado y criterios de aceptación
@@ -53,8 +53,9 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 | CA-07 | Confirmación | Un carrito vacío no se confirma. Un doble clic crea un solo pedido con código `LAT-XXXXXX` |
 | CA-08 | Persistencia | El pedido confirmado sigue disponible después de recargar la página |
 | CA-09 | Consulta | Un código existente muestra ítems, total y estados. Uno inexistente muestra "No encontramos ese pedido…" |
-| CA-10 | Pago | Al recoger o por transferencia el pago queda pendiente y el pedido sigue Confirmado. Si la cafetería lo rechaza, se puede pagar de nuevo; si lo aprueba, el pedido queda Pagado y no acepta otro pago. Una referencia vacía, con espacios o repetida se rechaza. El monto es el total del pedido |
-| CA-13 | Seguridad del pago | Sin el PIN no se pueden ver ni aprobar pagos ("PIN incorrecto."); el cliente no puede marcar su propio pago como aprobado |
+| CA-10 | Pago | PSE: sin banco aparece "Elige tu banco."; en la pantalla del banco se ven comercio, valor y CUS; **Pagar** deja el pedido Pagado y **Cancelar** lo deja sin pagar para intentar de nuevo. Al recoger: el pago queda "Pendiente en caja" hasta que la cafetería lo marca pagado. Un pedido pagado no acepta otro pago. El monto es el total del pedido |
+| CA-13 | Seguridad del pago | Sin el PIN no se pueden ver ni marcar pagos al recoger ("PIN incorrecto."); el cliente no puede aprobar su propio pago al recoger |
+| CA-14 | Bebidas sin leche | Té Chai y Americano Frío no muestran opciones de leche y no tienen recargo |
 | CA-11 | Privacidad | El aviso se abre y se cierra sin perder el carrito |
 | CA-12 | Celular | A 375 px de ancho no hay desplazamiento horizontal en menú, pago y consulta |
 

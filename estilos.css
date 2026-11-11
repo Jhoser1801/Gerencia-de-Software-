@@ -89,6 +89,13 @@ dialog .total,.tarjeta-pedido .total{font-size:1.25rem}
 .panel-transf p{margin:.2rem 0 .5rem}.panel-transf label{font-weight:700;display:block;margin:.6rem 0 .3rem}
 .panel-transf input{width:100%;box-sizing:border-box;padding:.65rem .8rem;border:1px solid var(--linea);border-radius:8px;background:#fff;color:var(--cafe);text-transform:uppercase}
 .btn.secundario{background:#fff;color:var(--cafe);border:2px solid var(--cafe)}
+.panel-transf select{width:100%;box-sizing:border-box;padding:.65rem .8rem;border:1px solid var(--linea);border-radius:8px;background:#fff;color:var(--cafe);font:inherit}
+.panel-transf .etiqueta{font-weight:700;margin:.8rem 0 .3rem}
+.tipos-persona{display:flex;gap:1.4rem}.tipos-persona label{display:flex;align-items:center;gap:.4rem;font-weight:400;margin:0}
+.banco{background:#fff;border:1px solid var(--linea);border-radius:12px;overflow:hidden;margin:1rem 0;box-shadow:0 2px 10px rgba(62,35,18,.08)}
+.banco-cab{display:flex;justify-content:space-between;align-items:center;gap:1rem;padding:1rem 1.2rem;background:#1f3a5f;color:#fff}
+.banco-cab strong{font-size:1.15rem}.banco-cab span{font-size:.85rem;opacity:.9}
+.banco-cuerpo{padding:1.2rem}.banco-cuerpo .btn{margin-top:1rem}
 .lista-pendientes{list-style:none;padding:0;margin:0}
 .pago-pendiente{display:flex;justify-content:space-between;align-items:center;gap:1rem;flex-wrap:wrap}
 .pago-pendiente .acciones{display:flex;gap:.5rem}.pago-pendiente .acciones .btn{width:auto;padding:.5rem 1rem}

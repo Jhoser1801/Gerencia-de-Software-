@@ -7,7 +7,8 @@ const carrito = rehidratarCarrito(leerLocal(LLAVE_CARRITO));
 let imagenActual = null;
 // Esta clave evita que un pedido se guarde dos veces si le dan doble clic a confirmar (SCRUM-42)
 const checkout = { clave: null, enviando: false, error: "" };
-const pago = { pedido: null, cargando: false, procesando: false, mensaje: null, error: "", medio: "recoger", referencia: "" };
+const pago = { pedido: null, cargando: false, procesando: false, mensaje: null, error: "",
+               medio: "recoger", banco: "", tipoPersona: "Natural", transaccion: null };
 const $ = id => document.getElementById(id);
 
 function leerLocal(llave) { try { return JSON.parse(localStorage.getItem(llave)); } catch { return null; } }
@@ -80,7 +81,7 @@ async function confirmarPedido() {
     carrito.length = 0;
     carritoCambio();
     guardarLocal(LLAVE_ULTIMO, pedido.codigo);
-    pago.pedido = pedido; pago.mensaje = null; pago.error = "";
+    pago.pedido = pedido; pago.mensaje = null; pago.error = ""; pago.transaccion = null;
     checkout.enviando = false;
     $("resumen").close();
     pintar();
@@ -106,35 +107,54 @@ function elegirMedio(medio) {
   pago.medio = medio;
   pago.error = "";
   document.querySelectorAll(".form-pago .medio").forEach(l => l.classList.toggle("sel", l.dataset.medio === medio));
-  $("panel-transferencia").hidden = medio !== "transferencia";
-  $("btn-pagar").textContent = medio === "transferencia" ? "Enviar referencia" : "Confirmar pago al recoger";
+  $("panel-pse").hidden = medio !== "pse";
+  $("btn-pagar").textContent = medio === "pse" ? "Ir a mi banco" : "Confirmar pago al recoger";
   $("error-pago").textContent = "";
+}
+async function guardarPago(solicitud) {
+  pago.procesando = true; pago.error = ""; pintarPago();
+  try {
+    pago.pedido = await Api.registrarPago(pago.pedido.codigo, solicitud);
+  } catch (e) {
+    pago.error = e.message;
+    try { pago.pedido = await Api.consultarPedido(pago.pedido.codigo) || pago.pedido; } catch { }
+  }
+  pago.procesando = false; pintarPago();
 }
 async function pagar(evento) {
   evento.preventDefault();
   if (pago.procesando || !pago.pedido) return;
   const datos = new FormData(evento.target);
   pago.medio = datos.get("medio");
-  pago.referencia = String(datos.get("referencia") || "");
+  pago.banco = String(datos.get("banco") || "");
+  pago.tipoPersona = String(datos.get("tipoPersona") || "");
   let solicitud;
   try {
     // el monto es el total que quedó guardado en el pedido
     solicitud = Pasarela.iniciarPago({ monto: pago.pedido.total, referenciaPedido: pago.pedido.codigo,
-                                        medio: pago.medio, referenciaTransferencia: pago.referencia });
+                                        medio: pago.medio, banco: pago.banco, tipoPersona: pago.tipoPersona });
   } catch (e) {
     $("error-pago").textContent = e.message;
-    if (pago.medio === "transferencia") $("referencia").focus();
+    if (pago.medio === "pse") (pago.banco ? document.querySelector('input[name="tipoPersona"]') : $("banco")).focus();
     return;
   }
-  pago.procesando = true; pago.error = ""; pintarPago();
-  try {
-    pago.pedido = await Api.registrarPago(pago.pedido.codigo, solicitud);
-    pago.referencia = "";
-  } catch (e) {
-    pago.error = e.message;
-    try { pago.pedido = await Api.consultarPedido(pago.pedido.codigo) || pago.pedido; } catch { }
+  if (pago.medio === "pse") {
+    // PSE: pasamos a la pantalla del banco con el valor y el CUS
+    pago.transaccion = solicitud; pago.error = ""; pintarPago();
+    window.scrollTo(0, 0);
+    return;
   }
-  pago.procesando = false; pintarPago();
+  await guardarPago(solicitud);
+}
+// el cliente autoriza o cancela el débito en la pantalla del banco
+async function responderBanco(autorizado) {
+  if (pago.procesando || !pago.transaccion) return;
+  pago.procesando = true; pintarPago();
+  await new Promise(r => setTimeout(r, 1200));
+  const respuesta = Pasarela.responderBanco(pago.transaccion, autorizado);
+  pago.transaccion = null;
+  pago.procesando = false;
+  await guardarPago(respuesta);
 }
 
 // Vista "Cafetería": la cafetería aprueba o rechaza los pagos pendientes con su PIN
@@ -184,7 +204,7 @@ async function consultar(evento) {
     zona.innerHTML = `<p class="aviso">${escapar(e.message)}</p>`;
   }
 }
-function irAPagar(codigo) { guardarLocal(LLAVE_ULTIMO, codigo); pago.pedido = null; location.hash = "#pago"; }
+function irAPagar(codigo) { guardarLocal(LLAVE_ULTIMO, codigo); pago.pedido = null; pago.transaccion = null; location.hash = "#pago"; }
 
 // Aviso de privacidad (SCRUM-47)
 function abrirPrivacidad() { $("privacidad").showModal(); }
@@ -210,7 +230,7 @@ function fotoMenu(producto) {
   const ruta = (producto.imagenes || {})[TAMANO_NEUTRO];
   return ruta ? `<img class="foto" src="${ruta}" alt="${producto.nombre}">` : producto.icono;
 }
-function textoLeche(leche) { return "Leche " + leche; }
+function textoLeche(leche) { return leche === SIN_LECHE ? SIN_LECHE : "Leche " + leche; }
 
 function pintar() {
   const lista = productosValidos(PRODUCTOS);
@@ -260,8 +280,8 @@ function pintarDetalle() {
     <p>Tamaño</p>
     <div class="tamanos" role="radiogroup" aria-label="Tamaño">${TAMANOS.map(t =>
       `<button type="button" class="op tam" role="radio" data-tamano="${t}" onclick="elegirTamano('${t}')">${iconoVaso(t)}<span>${t}</span></button>`).join("")}</div>
-    <p>Leche</p>${Object.keys(LECHES).map(l =>
-      `<button type="button" class="op" role="radio" data-leche="${l}" onclick="elegirLeche('${l}')">${l}${LECHES[l] ? " (+" + dinero(LECHES[l]) + ")" : ""}</button>`).join("")}
+    ${admiteLeche(p) ? `<p>Leche</p>${Object.keys(LECHES).map(l =>
+      `<button type="button" class="op" role="radio" data-leche="${l}" onclick="elegirLeche('${l}')">${l}${LECHES[l] ? " (+" + dinero(LECHES[l]) + ")" : ""}</button>`).join("")}` : ""}
     <p id="aviso-modal" class="aviso" role="alert"></p>
     <button class="btn" onclick="agregarAlCarrito()">Agregar al carrito</button>
     <button class="cerrar" onclick="cerrarModal()">Cancelar</button>`;
@@ -308,7 +328,7 @@ function pintarResumen() {
 function htmlEstadoPago(pedido) {
   const ultimo = ultimoPago(pedido);
   if (!ultimo) return "Sin pago";
-  if (ultimo.estado === "Pendiente") return ultimo.metodo === "Transferencia" ? "En verificación" : "Pendiente en caja";
+  if (ultimo.estado === "Pendiente") return "Pendiente en caja";
   return ultimo.estado;
 }
 function claseEstadoPago(pedido) {
@@ -321,13 +341,13 @@ function htmlPedido(pedido) {
     <div class="cab-pedido"><div><small>Pedido</small><h2>${escapar(pedido.codigo)}</h2><small>${escapar(fecha)}</small></div>
       <div class="estados"><span class="estado est-${escapar(pedido.estado).toLowerCase()}">Pedido: ${escapar(pedido.estado)}</span>
       <span class="estado ${claseEstadoPago(pedido)}">Pago: ${escapar(htmlEstadoPago(pedido))}</span></div></div>
-    <ul class="resumen-lista">${pedido.items.map(i => `<li><span>${i.cantidad} × ${escapar(i.nombre)}<br><small>${escapar(i.tamano)} · Leche ${escapar(i.leche)} · ${dinero(i.precio_unitario)} c/u</small></span>
+    <ul class="resumen-lista">${pedido.items.map(i => `<li><span>${i.cantidad} × ${escapar(i.nombre)}<br><small>${escapar(i.tamano)} · ${escapar(textoLeche(i.leche))} · ${dinero(i.precio_unitario)} c/u</small></span>
       <strong>${dinero(i.subtotal)}</strong></li>`).join("")}</ul>
     <p class="linea"><span>Subtotal</span><span>${dinero(pedido.subtotal)}</span></p>
     <p class="linea"><span>Recargos</span><span>${dinero(pedido.recargos)}</span></p>
     <p class="linea total"><span>Total</span><span>${dinero(pedido.total)}</span></p>
     ${pedido.pagos && pedido.pagos.length ? `<details><summary>Intentos de pago (${pedido.pagos.length})</summary><ul class="pagos">
-      ${pedido.pagos.map(g => `<li>${escapar(g.estado)} · ${escapar(g.metodo)} · ${dinero(g.monto)} · ${escapar(g.referencia)}</li>`).join("")}</ul></details>` : ""}
+      ${pedido.pagos.map(g => `<li>${escapar(g.estado)} · ${escapar(g.metodo)}${g.banco ? " (" + escapar(g.banco) + ")" : ""} · ${dinero(g.monto)} · ${escapar(g.referencia)}</li>`).join("")}</ul></details>` : ""}
   </section>`;
 }
 
@@ -344,33 +364,56 @@ function pintarPago() {
   const codigo = escapar(pedido.codigo);
   let estadoPago = "";
   if (pedido.estado === "Pagado") {
-    estadoPago = `<p class="ok" role="status">Pago aprobado. Tu pedido quedó pagado y ya se puede preparar.</p>
+    const pse = ultimo && ultimo.metodo === "PSE";
+    estadoPago = `<p class="ok" role="status">Pago aprobado${pse ? " por " + escapar(ultimo.banco) : ""}. Tu pedido quedó pagado y ya se puede preparar.</p>
+      ${pse ? `<p class="nota">Código CUS de PSE: <strong>${escapar(ultimo.referencia.replace(/^PSE-/, ""))}</strong></p>` : ""}
       <p><a href="#consulta">Ver mi pedido</a> · <a href="#menu">Hacer otro pedido</a></p>`;
   } else if (ultimo && ultimo.estado === "Pendiente") {
-    estadoPago = (ultimo.metodo === "Transferencia"
-      ? `<p class="pendiente" role="status">Recibimos tu referencia ${escapar(ultimo.referencia.replace(/^TRF-/, ""))}. La cafetería está verificando la transferencia de ${dinero(ultimo.monto)}.</p>`
-      : `<p class="pendiente" role="status">Tu pedido quedó reservado. Muestra el código <strong>${codigo}</strong> en caja y paga ${dinero(ultimo.monto)} al recogerlo.</p>`)
-      + `<button class="btn ancho-auto" type="button" onclick="cargarPedidoParaPago(true)">Actualizar estado del pago</button>`;
+    estadoPago = `<p class="pendiente" role="status">Tu pedido quedó reservado. Muestra el código <strong>${codigo}</strong> en caja y paga ${dinero(ultimo.monto)} al recogerlo.</p>
+      <button class="btn ancho-auto" type="button" onclick="cargarPedidoParaPago(true)">Actualizar estado del pago</button>`;
+  } else if (pago.transaccion) {
+    // pantalla del banco (PSE): el cliente revisa los datos y autoriza o cancela el débito
+    const t = pago.transaccion;
+    zona.innerHTML = `<section class="banco" aria-labelledby="banco-tit">
+      <div class="banco-cab"><strong id="banco-tit">${escapar(t.banco)}</strong><span>Pagos PSE</span></div>
+      <div class="banco-cuerpo">
+        <p class="nota">Revisa los datos y autoriza el débito desde tu cuenta.</p>
+        <p class="linea"><span>Comercio</span><span>${escapar(Pasarela.comercio)}</span></p>
+        <p class="linea"><span>Descripción</span><span>Pedido ${codigo}</span></p>
+        <p class="linea"><span>Tipo de persona</span><span>${escapar(t.tipoPersona)}</span></p>
+        <p class="linea"><span>Código CUS</span><span>${escapar(t.cus)}</span></p>
+        <p class="linea total"><span>Valor a pagar</span><span>${dinero(t.monto)}</span></p>
+        ${pago.procesando ? `<p class="pendiente" role="status">Procesando con tu banco…</p>` : `
+        <button class="btn" type="button" onclick="responderBanco(true)">Pagar ${dinero(t.monto)}</button>
+        <button class="cerrar" type="button" onclick="responderBanco(false)">Cancelar y volver a Lattely</button>`}
+      </div></section>`;
+    return;
   } else {
-    const medio = pago.medio === "transferencia" ? "transferencia" : "recoger";
-    const t = Pasarela.transferencia;
-    estadoPago = `${ultimo && ultimo.estado === "Rechazado"
-        ? `<p class="aviso" role="alert">La cafetería rechazó el pago anterior (${escapar(ultimo.metodo)}). No se hizo ningún cobro; puedes intentarlo de nuevo.</p>` : ""}
+    const medio = pago.medio === "pse" ? "pse" : "recoger";
+    const rechazo = ultimo && ultimo.estado === "Rechazado"
+      ? (ultimo.metodo === "PSE"
+          ? `<p class="aviso" role="alert">El pago con PSE no se completó (${escapar(ultimo.banco)}). No se hizo ningún cobro; puedes intentarlo de nuevo.</p>`
+          : `<p class="aviso" role="alert">La cafetería rechazó el pago al recoger. Puedes intentarlo de nuevo.</p>`) : "";
+    estadoPago = `${rechazo}
     <form class="form-pago" onsubmit="pagar(event)" novalidate>
       <fieldset ${pago.procesando ? "disabled" : ""}><legend>Elige cómo pagar</legend>
         ${Pasarela.medios.map(m => `<label class="medio${m.id === medio ? " sel" : ""}" data-medio="${m.id}">
           <input type="radio" name="medio" value="${m.id}" ${m.id === medio ? "checked" : ""} onchange="elegirMedio('${m.id}')">
           <span><strong>${escapar(m.nombre)}</strong><br><small>${escapar(m.detalle)}</small></span></label>`).join("")}
-        <div id="panel-transferencia" class="panel-transf" ${medio === "transferencia" ? "" : "hidden"}>
-          <p>Transfiere <strong>${dinero(pedido.total)}</strong> a la llave <strong>${escapar(t.llave)}</strong> (${escapar(t.titular)}) desde ${escapar(t.medios)}.</p>
-          <p class="nota">Escribe <strong>${codigo}</strong> en el mensaje de la transferencia.</p>
-          <label for="referencia">Número de referencia de la transferencia</label>
-          <input id="referencia" name="referencia" placeholder="M12345678" maxlength="20" autocomplete="off" value="${escapar(pago.referencia)}" oninput="$('error-pago').textContent=''">
+        <div id="panel-pse" class="panel-transf" ${medio === "pse" ? "" : "hidden"}>
+          <label for="banco">Banco</label>
+          <select id="banco" name="banco" onchange="$('error-pago').textContent=''">
+            <option value="">Selecciona tu banco</option>
+            ${Pasarela.bancos.map(b => `<option${b === pago.banco ? " selected" : ""}>${escapar(b)}</option>`).join("")}
+          </select>
+          <p class="etiqueta">Tipo de persona</p>
+          <div class="tipos-persona">${Pasarela.tiposPersona.map(t => `<label><input type="radio" name="tipoPersona" value="${t}" ${t === (pago.tipoPersona || "Natural") ? "checked" : ""}> ${t}</label>`).join("")}</div>
+          <p class="nota">Te llevamos a la página de tu banco para autorizar el pago de <strong>${dinero(pedido.total)}</strong>.</p>
         </div>
         <p id="error-pago" class="aviso" role="alert"></p>
       </fieldset>
-      <button id="btn-pagar" class="btn" type="submit" ${pago.procesando ? "disabled" : ""}>${pago.procesando ? "Enviando…" : medio === "transferencia" ? "Enviar referencia" : "Confirmar pago al recoger"}</button>
-      <p class="peq">Lattely no pide ni guarda datos de tarjeta.</p>
+      <button id="btn-pagar" class="btn" type="submit" ${pago.procesando ? "disabled" : ""}>${pago.procesando ? "Enviando…" : medio === "pse" ? "Ir a mi banco" : "Confirmar pago al recoger"}</button>
+      <p class="peq">Lattely no pide ni guarda datos de tarjeta ni claves bancarias.</p>
     </form>`;
   }
   zona.innerHTML = `<p class="nota">Guarda tu código <strong>${codigo}</strong> para consultar tu pedido.</p>
@@ -387,7 +430,7 @@ function pintarCafeteria() {
         <label for="pin">PIN de la cafetería</label>
         <div class="fila"><input id="pin" type="password" inputmode="numeric" autocomplete="off" maxlength="12" class="sin-mayus">
         <button class="btn" type="submit" ${caf.cargando ? "disabled" : ""}>${caf.cargando ? "Entrando…" : "Entrar"}</button></div>
-      </form>${aviso}<p class="nota">Solo para el personal: aquí se aprueban o rechazan los pagos al recoger y las transferencias.</p>`;
+      </form>${aviso}<p class="nota">Solo para el personal: aquí se marcan como pagados o se rechazan los pagos al recoger.</p>`;
     return;
   }
   const lista = caf.pedidos.map(p => {
@@ -396,7 +439,7 @@ function pintarCafeteria() {
     const c = escapar(p.codigo);
     return `<li class="tarjeta-pedido pago-pendiente">
       <div><strong>${c}</strong> · ${dinero(g.monto)}<br><small>${escapar(g.metodo)} · ${escapar(g.referencia)} · ${escapar(fecha)}</small></div>
-      <div class="acciones"><button class="btn" type="button" onclick="resolverPago('${c}', true)" ${caf.cargando ? "disabled" : ""}>${g.metodo === "Transferencia" ? "Aprobar" : "Marcar pagado"}</button>
+      <div class="acciones"><button class="btn" type="button" onclick="resolverPago('${c}', true)" ${caf.cargando ? "disabled" : ""}>Marcar pagado</button>
       <button class="btn secundario" type="button" onclick="resolverPago('${c}', false)" ${caf.cargando ? "disabled" : ""}>Rechazar</button></div></li>`;
   }).join("");
   zona.innerHTML = `${caf.mensaje ? `<p class="ok" role="status">${escapar(caf.mensaje)}</p>` : ""}${aviso}

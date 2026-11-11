@@ -8,9 +8,16 @@ function productosValidos(lista) {
   return lista.filter(p => typeof p.precio === "number" && p.precio > 0);
 }
 function recargoLeche(leche) { return LECHES[leche] || 0; }
+// Té Chai y Americano Frío no llevan leche: no se elige y no tienen recargo
+function admiteLeche(producto) { return !!producto && producto.usaLeche !== false; }
+// devuelve la leche que se guarda para ese producto, o null si no es válida
+function lecheValida(producto, leche) {
+  if (!admiteLeche(producto)) return SIN_LECHE;
+  return Object.prototype.hasOwnProperty.call(LECHES, leche) ? leche : null;
+}
 function precioUnitario(producto, leche) {
   // siempre partimos del precio base, así la leche de almendras no se suma dos veces (BUG-01)
-  return producto.precio + recargoLeche(leche);
+  return producto.precio + (admiteLeche(producto) ? recargoLeche(leche) : 0);
 }
 const dinero = n => "$" + Number(n || 0).toLocaleString("es-CO");
 
@@ -25,7 +32,8 @@ function datosImagen(producto, tamano) {
 function agregarItem(carrito, producto, tamano, leche) {
   if (!producto) return "Elige un producto.";
   if (!TAMANOS.includes(tamano)) return "Faltan opciones por seleccionar: elige un tamaño.";
-  if (!(leche in LECHES)) return "Elige un tipo de leche válido.";
+  leche = lecheValida(producto, leche);
+  if (!leche) return "Elige un tipo de leche válido.";
   const igual = carrito.find(i => i.idProducto === producto.id && i.tamano === tamano && i.leche === leche);
   if (igual) {
     if (igual.cantidad >= MAX_CANTIDAD) return `Máximo ${MAX_CANTIDAD} unidades por producto.`;
@@ -70,7 +78,7 @@ function rehidratarCarrito(guardado) {
   for (const g of guardado) {
     const p = productosValidos(PRODUCTOS).find(x => x && g && x.id === g.idProducto);
     const cant = Number.isInteger(g && g.cantidad) ? Math.min(Math.max(g.cantidad, 1), MAX_CANTIDAD) : 1;
-    if (!p || !TAMANOS.includes(g.tamano) || !(g.leche in LECHES)) continue;
+    if (!p || !TAMANOS.includes(g.tamano) || !lecheValida(p, g.leche)) continue;
     for (let n = 0; n < cant; n++) agregarItem(carrito, p, g.tamano, g.leche);
   }
   return carrito;
@@ -81,7 +89,7 @@ function validarCarrito(items) {
   if (!items.length) return "Tu carrito está vacío: agrega al menos una bebida para confirmar.";
   for (const i of items) {
     if (!TAMANOS.includes(i.tamano)) return `Falta elegir el tamaño de ${i.nombre}.`;
-    if (!(i.leche in LECHES)) return `Falta elegir la leche de ${i.nombre}.`;
+    if (i.leche !== SIN_LECHE && !(i.leche in LECHES)) return `Falta elegir la leche de ${i.nombre}.`;
     if (!Number.isInteger(i.cantidad) || i.cantidad < 1 || i.cantidad > MAX_CANTIDAD) return `Cantidad no válida en ${i.nombre}.`;
   }
   return null;
@@ -96,10 +104,11 @@ function calcularPedido(itemsPedido) {
     const p = productosValidos(PRODUCTOS).find(x => x.id === it.producto_id);
     if (!p) throw new Error("Hay un producto que no existe o no está disponible.");
     if (!TAMANOS.includes(it.tamano)) throw new Error(`Falta elegir el tamaño de ${p.nombre}.`);
-    if (!(it.leche in LECHES)) throw new Error(`Tipo de leche no válido en ${p.nombre}.`);
+    const leche = lecheValida(p, it.leche);
+    if (!leche) throw new Error(`Tipo de leche no válido en ${p.nombre}.`);
     if (!Number.isInteger(it.cantidad) || it.cantidad < 1 || it.cantidad > MAX_CANTIDAD) throw new Error(`Cantidad no válida en ${p.nombre}.`);
-    const recargo = recargoLeche(it.leche);
-    return { producto_id: p.id, nombre: p.nombre, tamano: it.tamano, leche: it.leche, cantidad: it.cantidad,
+    const recargo = recargoLeche(leche);
+    return { producto_id: p.id, nombre: p.nombre, tamano: it.tamano, leche, cantidad: it.cantidad,
              precio_unitario: p.precio + recargo, recargo_leche: recargo, subtotal: (p.precio + recargo) * it.cantidad };
   });
   const subtotal = items.reduce((s, i) => s + (i.precio_unitario - i.recargo_leche) * i.cantidad, 0);

@@ -16,7 +16,7 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 ### 2.1 Elegir y personalizar una bebida
 1. En **Nuestro menú**, pulsar **+ Agregar** en la bebida que quieras.
 2. En la ventana, elegir el **tamaño** (Pequeño, Mediano o Grande). Es obligatorio. El tamaño no cambia el precio, pero la foto cambia de tamaño.
-3. Elegir la **leche**: Entera, Deslactosada o Almendras. La de almendras suma $2.000.
+3. En Latte y Cappuccino, elegir la **leche**: Entera, Deslactosada o Almendras. La de almendras suma $2.000. Té Chai y Americano Frío no llevan leche, así que no aparece esa opción.
 4. Pulsar **Agregar al carrito**. El contador del carrito 🛒 sube.
 
 ### 2.2 Revisar el carrito
@@ -33,17 +33,17 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 ### 2.4 Pagar
 1. En **Pagar pedido**, elegir cómo pagar:
 
-   | Medio | Qué hacer | Estado del pago |
+   | Medio | Qué hacer | Resultado |
    |---|---|---|
-   | Pagar al recoger | Pulsar **Confirmar pago al recoger**, mostrar el código en caja y pagar | **Pendiente en caja** |
-   | Transferencia | Transferir el total a la llave `@lattely` con el código del pedido en el mensaje, escribir el número de referencia del banco y pulsar **Enviar referencia** | **En verificación** |
+   | PSE | Elegir el banco y el tipo de persona y pulsar **Ir a mi banco**. En la pantalla del banco revisar el comercio, el valor y el código CUS, y pulsar **Pagar** | **Aprobado**: el pedido queda **Pagado** y se muestra el CUS. Si se pulsa **Cancelar**, no se cobra nada y se puede pagar de nuevo |
+   | Pagar al recoger | Pulsar **Confirmar pago al recoger**, mostrar el código en caja y pagar | **Pendiente en caja** hasta que la cafetería lo marca pagado |
 
-2. La cafetería revisa el pago. Si lo aprueba, el pedido queda **Pagado**. Si lo rechaza, no se cobra nada y se puede pagar de nuevo. **Actualizar estado del pago** muestra la respuesta. Lattely no pide datos de tarjeta.
+2. Para ver si la cafetería ya marcó un pago al recoger, pulsar **Actualizar estado del pago**. Lattely no pide datos de tarjeta ni claves bancarias.
 
-### Para la cafetería: aprobar pagos
+### Para la cafetería: pagos al recoger
 1. Ir a **Cafetería** (menú de arriba) y escribir el PIN.
-2. En la lista de **Pagos por revisar** aparece cada pedido con su total, el medio y la referencia.
-3. Pulsar **Aprobar** (o **Marcar pagado** si pagó en caja) cuando el dinero llegó, o **Rechazar** si no se encuentra la transferencia.
+2. En la lista de **Pagos por revisar** aparece cada pedido que se va a pagar en caja, con su total.
+3. Pulsar **Marcar pagado** cuando el cliente paga en caja, o **Rechazar** si no se presentó.
 
 ### 2.5 Consultar el pedido
 1. Ir a **Mi pedido** (menú de arriba).
@@ -58,10 +58,10 @@ No hay que instalar nada. Si `config.js` no tiene datos de Supabase, los pedidos
 | "Tu carrito está vacío…" al confirmar | No hay bebidas en el carrito | Agregar al menos una bebida |
 | El botón **−** no hace nada | La cantidad ya es 1 | Usar **Quitar** para eliminar la bebida |
 | La cantidad no pasa de 20 | Es el máximo por bebida | Hacer otro pedido si se necesitan más |
-| "Escribe el número de referencia…" o "La referencia debe tener entre 6 y 20…" | Falta la referencia o tiene espacios o símbolos | Copiar la referencia del comprobante del banco, sin espacios |
-| "Esa referencia ya se registró en otro pago." | La referencia ya se usó | Revisar el número del comprobante |
+| "Elige tu banco." | No se eligió banco en PSE | Elegir el banco en la lista |
 | "Este pedido ya tiene un pago pendiente de revisión." | Ya hay un pago esperando a la cafetería | Esperar la revisión y pulsar **Actualizar estado del pago** |
-| "La cafetería rechazó el pago anterior…" | La cafetería no encontró la transferencia | Revisar la transferencia y pagar de nuevo; el pedido no se pierde |
+| "El pago con PSE no se completó…" | Se canceló el pago en la pantalla del banco | Pagar de nuevo con PSE o elegir pagar al recoger; el pedido no se pierde |
+| "La cafetería rechazó el pago al recoger…" | La cafetería rechazó el pago en caja | Pagar de nuevo; el pedido no se pierde |
 | "PIN incorrecto." (vista Cafetería) | El PIN no coincide | Escribir el PIN de la cafetería |
 | "Este pedido ya está pagado." | Se intentó pagar dos veces | No hay que hacer nada; el pedido ya está pagado |
 | "No encontramos ese pedido…" | El código está mal escrito o el pedido se hizo en otro navegador (modo local) | Revisar el código; en modo local, consultar desde el mismo navegador |

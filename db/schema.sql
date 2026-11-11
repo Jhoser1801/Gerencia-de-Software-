@@ -2,14 +2,15 @@
 -- Para usarlo: en Supabase abrir SQL Editor, pegar todo el archivo y darle Run.
 -- Ojo: si se vuelve a correr, borra todo y lo crea de nuevo, también los pedidos.
 -- Desde la página solo se pueden usar las funciones de abajo, no las tablas directamente.
--- Pagos: el cliente solo registra pagos "Pendiente" (al recoger o por transferencia) y la cafetería,
--- con su PIN (tabla ajustes), los aprueba o rechaza.
+-- Pagos: al recoger quedan "Pendiente" y la cafetería, con su PIN (tabla ajustes), los aprueba o rechaza;
+-- con PSE llegan con la respuesta del banco (Aprobado o Rechazado).
 
 drop function if exists public.resolver_pago(text, boolean, text);
 drop function if exists public.pagos_pendientes(text);
 drop function if exists public.pin_valido(text);
 drop function if exists public.registrar_pago(text, text, text, text);
 drop function if exists public.registrar_pago(text, text, text);
+drop function if exists public.registrar_pago(text, text, text, text, text);
 drop function if exists public.consultar_pedido(text);
 drop function if exists public.confirmar_pedido(jsonb, uuid);
 drop table if exists public.ajustes cascade;
@@ -24,7 +25,8 @@ create table public.productos (
   id      integer primary key,
   nombre  text    not null,
   precio  integer not null check (precio > 0),
-  activo  boolean not null default true
+  activo  boolean not null default true,
+  usa_leche boolean not null default true  -- false: Té Chai y Americano Frío, se guardan con 'Sin leche'
 );
 
 create table public.leches (
@@ -65,7 +67,8 @@ create table public.pagos (
   monto       integer     not null check (monto > 0),
   estado      text        not null check (estado in ('Aprobado', 'Rechazado', 'Pendiente')),
   referencia  text        not null unique,
-  metodo      text        not null check (metodo in ('Pagar al recoger', 'Transferencia')),
+  metodo      text        not null check (metodo in ('Pagar al recoger', 'PSE')),
+  banco       text,
   creado_en   timestamptz not null default now(),
   revisado_en timestamptz
 );
@@ -134,12 +137,16 @@ begin
   -- primero revisamos todo y después sí guardamos
   for v_item in select * from jsonb_array_elements(p_items) loop
     v_tamano := v_item->>'tamano';
-    v_leche  := coalesce(v_item->>'leche', 'Entera');
     v_cant   := (v_item->>'cantidad')::integer;
 
     select * into v_prod from productos where id = (v_item->>'producto_id')::integer and activo;
     if not found then
       raise exception 'Hay un producto que no existe o no está disponible.';
+    end if;
+    -- los productos sin leche siempre se guardan como 'Sin leche'; los demás no la aceptan
+    v_leche := case when v_prod.usa_leche then coalesce(v_item->>'leche', 'Entera') else 'Sin leche' end;
+    if v_prod.usa_leche and v_leche = 'Sin leche' then
+      raise exception 'Tipo de leche no válido en %.', v_prod.nombre;
     end if;
     if v_tamano is null or v_tamano not in ('Pequeño', 'Mediano', 'Grande') then
       raise exception 'Falta elegir el tamaño de %.', v_prod.nombre;
@@ -167,7 +174,7 @@ begin
 
   for v_item in select * from jsonb_array_elements(p_items) loop
     select * into v_prod from productos where id = (v_item->>'producto_id')::integer;
-    v_leche := coalesce(v_item->>'leche', 'Entera');
+    v_leche := case when v_prod.usa_leche then coalesce(v_item->>'leche', 'Entera') else 'Sin leche' end;
     select recargo into v_recargo from leches where nombre = v_leche;
     v_cant := (v_item->>'cantidad')::integer;
 
@@ -221,6 +228,7 @@ as $$
                'monto',      g.monto,
                'referencia', g.referencia,
                'metodo',     g.metodo,
+               'banco',      g.banco,
                'creado_en',  g.creado_en) order by g.id)
       from pagos g where g.pedido_id = p.id), '[]'::jsonb)
   )
@@ -228,10 +236,10 @@ as $$
   where p.codigo = upper(trim(p_codigo));
 $$;
 
--- Guardar el pago que inicia el cliente (SCRUM-45 y 46). Siempre queda "Pendiente".
+-- Guardar un pago (SCRUM-45 y 46). Al recoger siempre queda "Pendiente"; con PSE llega la respuesta del banco.
 -- Un pedido pagado ya no acepta más pagos y no puede tener dos pagos pendientes.
 
-create or replace function public.registrar_pago(p_codigo text, p_referencia text, p_metodo text)
+create or replace function public.registrar_pago(p_codigo text, p_referencia text, p_metodo text, p_estado text, p_banco text)
 returns jsonb
 language plpgsql
 security definer
@@ -247,8 +255,17 @@ begin
   if v_pedido.estado = 'Pagado' then
     raise exception 'Este pedido ya está pagado.';
   end if;
-  if p_metodo is null or p_metodo not in ('Pagar al recoger', 'Transferencia') then
+  if p_metodo is null or p_metodo not in ('Pagar al recoger', 'PSE') then
     raise exception 'Medio de pago no válido.';
+  end if;
+  if p_metodo = 'Pagar al recoger' and p_estado is distinct from 'Pendiente' then
+    raise exception 'Un pago al recoger solo lo aprueba la cafetería.';
+  end if;
+  if p_metodo = 'PSE' and (p_estado is null or p_estado not in ('Aprobado', 'Rechazado')) then
+    raise exception 'Respuesta del banco no válida.';
+  end if;
+  if p_metodo = 'PSE' and coalesce(trim(p_banco), '') = '' then
+    raise exception 'Elige tu banco.';
   end if;
   if coalesce(trim(p_referencia), '') = '' then
     raise exception 'Falta la referencia del pago.';
@@ -257,11 +274,15 @@ begin
     raise exception 'Este pedido ya tiene un pago pendiente de revisión.';
   end if;
   if exists (select 1 from pagos where referencia = trim(p_referencia)) then
-    raise exception 'Esa referencia ya se registró en otro pago. Revisa el número que te dio tu banco.';
+    raise exception 'Ese pago ya se registró.';
   end if;
 
-  insert into pagos (pedido_id, monto, estado, referencia, metodo)
-  values (v_pedido.id, v_pedido.total, 'Pendiente', trim(p_referencia), p_metodo);
+  insert into pagos (pedido_id, monto, estado, referencia, metodo, banco)
+  values (v_pedido.id, v_pedido.total, p_estado, trim(p_referencia), p_metodo,
+          case when p_metodo = 'PSE' then trim(p_banco) end);
+  if p_estado = 'Aprobado' then
+    update pedidos set estado = 'Pagado' where id = v_pedido.id;
+  end if;
 
   return consultar_pedido(v_pedido.codigo);
 end;
@@ -331,32 +352,33 @@ $$;
 
 revoke all on function public.confirmar_pedido(jsonb, uuid)              from public;
 revoke all on function public.consultar_pedido(text)                     from public;
-revoke all on function public.registrar_pago(text, text, text)           from public;
+revoke all on function public.registrar_pago(text, text, text, text, text) from public;
 revoke all on function public.pin_valido(text)                           from public, anon, authenticated;
 revoke all on function public.pagos_pendientes(text)                     from public;
 revoke all on function public.resolver_pago(text, boolean, text)         from public;
 grant execute on function public.confirmar_pedido(jsonb, uuid)           to anon, authenticated;
 grant execute on function public.consultar_pedido(text)                  to anon, authenticated;
-grant execute on function public.registrar_pago(text, text, text)        to anon, authenticated;
+grant execute on function public.registrar_pago(text, text, text, text, text) to anon, authenticated;
 grant execute on function public.pagos_pendientes(text)                  to anon, authenticated;
 grant execute on function public.resolver_pago(text, boolean, text)      to anon, authenticated;
 
 -- Datos de prueba, iguales a los de datos.js
 
-insert into public.productos (id, nombre, precio) values
-  (1, 'Latte',          5200),
-  (2, 'Cappuccino',     4500),
-  (3, 'Americano Frío', 3800),
-  (4, 'Té Chai',        4800);
+insert into public.productos (id, nombre, precio, usa_leche) values
+  (1, 'Latte',          5200, true),
+  (2, 'Cappuccino',     4500, true),
+  (3, 'Americano Frío', 3800, false),
+  (4, 'Té Chai',        4800, false);
 
 insert into public.ajustes (clave, valor) values ('pin_cafeteria', '2468');
 
 insert into public.leches (nombre, recargo) values
   ('Entera',        0),
   ('Deslactosada',  0),
-  ('Almendras',  2000);
+  ('Almendras',  2000),
+  ('Sin leche',     0);
 
--- Dos pedidos de ejemplo: LAT-DEMO01 pagado por transferencia ($11.000) y LAT-DEMO02 con una transferencia rechazada ($9.000)
+-- Dos pedidos de ejemplo: LAT-DEMO01 pagado con PSE ($11.000) y LAT-DEMO02 con un pago PSE rechazado ($9.000)
 do $$
 declare v_id uuid;
 begin
@@ -364,14 +386,14 @@ begin
   values ('LAT-DEMO01', gen_random_uuid(), 9000, 2000, 11000, 'Pagado') returning id into v_id;
   insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
     (v_id, 1, 'Latte',          'Mediano', 'Almendras', 1, 5200, 2000, 7200, 7200),
-    (v_id, 3, 'Americano Frío', 'Pequeño', 'Entera',    1, 3800,    0, 3800, 3800);
-  insert into pagos (pedido_id, monto, estado, referencia, metodo, revisado_en)
-  values (v_id, 11000, 'Aprobado', 'TRF-DEMO0001', 'Transferencia', now());
+    (v_id, 3, 'Americano Frío', 'Pequeño', 'Sin leche', 1, 3800,    0, 3800, 3800);
+  insert into pagos (pedido_id, monto, estado, referencia, metodo, banco)
+  values (v_id, 11000, 'Aprobado', 'PSE-1000000001', 'PSE', 'Bancolombia');
 
   insert into pedidos (codigo, clave_idempotencia, subtotal, recargos, total)
   values ('LAT-DEMO02', gen_random_uuid(), 9000, 0, 9000) returning id into v_id;
   insert into items_pedido (pedido_id, producto_id, nombre, tamano, leche, cantidad, precio_base, recargo_leche, precio_unitario, subtotal) values
     (v_id, 2, 'Cappuccino', 'Grande', 'Entera', 2, 4500, 0, 4500, 9000);
-  insert into pagos (pedido_id, monto, estado, referencia, metodo, revisado_en)
-  values (v_id, 9000, 'Rechazado', 'TRF-DEMO0002', 'Transferencia', now());
+  insert into pagos (pedido_id, monto, estado, referencia, metodo, banco)
+  values (v_id, 9000, 'Rechazado', 'PSE-1000000002', 'PSE', 'Davivienda');
 end $$;

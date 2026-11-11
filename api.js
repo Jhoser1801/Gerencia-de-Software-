@@ -1,10 +1,19 @@
 // Aquí se guardan y se buscan los pedidos y los pagos (SCRUM-43, 44 y 46).
 // Hay dos formas: con Supabase o guardando en el mismo navegador. Las dos siguen las mismas reglas:
-//   - El cliente solo puede registrar pagos "Pendiente" (al recoger o por transferencia).
+//   - Pagar al recoger: el pago llega "Pendiente" y solo la cafetería, con su PIN, lo aprueba o rechaza.
+//   - PSE: llega con la respuesta del banco, "Aprobado" o "Rechazado", y el banco debe ser de la lista.
 //   - Un pedido tiene como máximo un pago pendiente a la vez y se marca "Pagado" una sola vez.
-//   - Solo la cafetería, con su PIN, aprueba o rechaza un pago pendiente.
 
-const METODOS_PAGO = ["Pagar al recoger", "Transferencia"];
+const METODOS_PAGO = ["Pagar al recoger", "PSE"];
+// revisa que el pago tenga sentido para su medio; devuelve el error o ""
+function errorDePago(r) {
+  if (!r || !METODOS_PAGO.includes(r.metodo)) return "Medio de pago no válido.";
+  if (r.metodo === "Pagar al recoger" && r.estado !== "Pendiente") return "Un pago al recoger solo lo aprueba la cafetería.";
+  if (r.metodo === "PSE" && !["Aprobado", "Rechazado"].includes(r.estado)) return "Respuesta del banco no válida.";
+  if (r.metodo === "PSE" && !BANCOS_PSE.includes(r.banco)) return "Elige tu banco.";
+  if (!String(r.referencia || "").trim()) return "Falta la referencia del pago.";
+  return "";
+}
 
 const ApiSupabase = (() => {
   async function rpc(nombre, parametros) {
@@ -34,8 +43,10 @@ const ApiSupabase = (() => {
     confirmarPedido: (items, clave) => rpc("confirmar_pedido", { p_items: items, p_clave: clave }),
     consultarPedido: codigo => rpc("consultar_pedido", { p_codigo: codigo }),
     registrarPago: (codigo, r) => {
-      if (r.estado !== "Pendiente") return Promise.reject(new Error("Solo la cafetería puede aprobar o rechazar un pago."));
-      return rpc("registrar_pago", { p_codigo: codigo, p_referencia: r.referencia, p_metodo: r.metodo });
+      const error = errorDePago(r);
+      if (error) return Promise.reject(new Error(error));
+      return rpc("registrar_pago", { p_codigo: codigo, p_referencia: r.referencia, p_metodo: r.metodo,
+                                     p_estado: r.estado, p_banco: r.banco || null });
     },
     pagosPendientes: pin => rpc("pagos_pendientes", { p_pin: String(pin || "") }),
     resolverPago: (codigo, aprobar, pin) => rpc("resolver_pago", { p_codigo: codigo, p_aprobar: !!aprobar, p_pin: String(pin || "") })
@@ -85,14 +96,15 @@ const ApiLocal = (() => {
       const p = db.pedidos[normalizar(codigo)];
       if (!p) throw new Error("No encontramos ese pedido.");
       if (p.estado === "Pagado") throw new Error("Este pedido ya está pagado.");
-      if (r.estado !== "Pendiente") throw new Error("Solo la cafetería puede aprobar o rechazar un pago.");
-      if (!METODOS_PAGO.includes(r.metodo)) throw new Error("Medio de pago no válido.");
-      if (!String(r.referencia || "").trim()) throw new Error("Falta la referencia del pago.");
+      const error = errorDePago(r);
+      if (error) throw new Error(error);
       const ultimo = ultimoPago(p);
       if (ultimo && ultimo.estado === "Pendiente") throw new Error("Este pedido ya tiene un pago pendiente de revisión.");
       const usada = Object.values(db.pedidos).some(x => x.pagos.some(g => g.referencia === r.referencia));
-      if (usada) throw new Error("Esa referencia ya se registró en otro pago. Revisa el número que te dio tu banco.");
-      p.pagos.push({ estado: "Pendiente", monto: p.total, referencia: r.referencia, metodo: r.metodo, creado_en: new Date().toISOString() });
+      if (usada) throw new Error("Ese pago ya se registró.");
+      p.pagos.push({ estado: r.estado, monto: p.total, referencia: r.referencia, metodo: r.metodo,
+                     banco: r.banco || null, creado_en: new Date().toISOString() });
+      if (r.estado === "Aprobado") p.estado = "Pagado";
       escribir(db);
       return copia(p);
     },
