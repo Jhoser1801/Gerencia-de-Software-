@@ -104,15 +104,15 @@ Pruebas automáticas (desde la carpeta `lattely`):
 ```
 node --test pruebas/logica.test.js
 ```
-**A** = prueba automática en Node (15 pasan). **N** = verificado en navegador (Chromium) en modo local. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
+**A** = prueba automática en Node (15 pasan). **N** = verificado en navegador (Chromium) en modo local; última ejecución 2026-11-11. **Pendiente** = falta ejecutarla y anotar el resultado real. Ninguna prueba se ha corrido todavía contra Supabase.
 
 | ID | Historia | Pasos | Esperado | Obtenido |
 |---|---|---|---|---|
-| P1 | HU-01 éxito | Elegir Latte y luego Cappuccino | La ventana muestra el producto elegido | Pendiente |
-| P2 | HU-01 límite | `PRODUCTOS = []` | "No hay productos disponibles por el momento." | Pendiente |
+| P1 | HU-01 éxito | Elegir Latte y luego Cappuccino | La ventana muestra el producto elegido | N (Latte $5.200 y luego Cappuccino $4.500, sin tamaño elegido) |
+| P2 | HU-01 límite | `PRODUCTOS = []` | "No hay productos disponibles por el momento." | N |
 | P3 | HU-02 éxito | Ver precios de Latte y Té Chai | $5.200 y $4.800, igual a `datos.js` | A |
 | P4 | HU-02 inválido | Producto sin `precio` | No aparece en el menú | A (Sprint 1) |
-| P5 | HU-03 éxito | Elegir Pequeño, Mediano, Grande | La opción elegida queda resaltada | Pendiente |
+| P5 | HU-03 éxito | Elegir Pequeño, Mediano, Grande | La opción elegida queda resaltada | N (solo la opción elegida queda resaltada) |
 | P6 | HU-03 inválido | Agregar sin tamaño | Aviso de tamaño faltante, carrito en 0 | A, N |
 | P7 | Integración | Latte + Grande, luego Cappuccino | Cappuccino sin tamaño elegido | A (Sprint 1) |
 | P8 | HU-04 éxito | Latte, Almendras | $7.200 | A, N |
@@ -121,7 +121,7 @@ node --test pruebas/logica.test.js
 | P11 | HU-06 éxito | Latte Almendras + Americano Frío Pequeño | Total $11.000 | A |
 | P12 | SCRUM-14 éxito | Con 2 ítems, Quitar el Latte | Total $11.000 → $3.800, contador 2→1 | A (Sprint 1) |
 | P13 | SCRUM-14 límite | Quitar el último ítem | "Aún no has agregado nada a tu pedido.", total $0 | A (Sprint 1) |
-| P14 | SCRUM-41 | Sin tamaño y luego Pequeño, Mediano, Grande | Imagen 70:100:130 centrada, precio igual | A lógica (Sprint 1); visual Pendiente |
+| P14 | SCRUM-41 | Sin tamaño y luego Pequeño, Mediano, Grande | Imagen 70:100:130 centrada, precio igual | A lógica (Sprint 1); N: altos 97, 137 y 178 px = 71:100:130, precio igual |
 | P15 | SCRUM-40 éxito | Latte Mediano Almendras, cantidad 3 | Subtotal ítem $21.600; contador 4 con un Americano | A, N |
 | P16 | SCRUM-40 límite | Disminuir con cantidad 1; subir más de 20 | Botón − deshabilitado; máximo 20 | A, N |
 | P17 | SCRUM-42 éxito + doble clic | Confirmar con 2 clics seguidos | Un solo pedido creado | A, N |
@@ -133,7 +133,7 @@ node --test pruebas/logica.test.js
 | P23 | SCRUM-45 límite | Pagar con "pendiente"; pagar un pedido ya pagado | Sigue Confirmado; "Este pedido ya está pagado." | A |
 | P24 | SCRUM-47 | Abrir y cerrar el aviso con ítems en el carrito | Aviso visible; carrito y total se conservan | N |
 | P25 | SCRUM-48 celular | Ancho 375 px en menú, pago y consulta | Sin desplazamiento horizontal | N |
-| P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | Pendiente |
+| P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | N en Chromium (Chrome); Edge, Firefox y Safari Pendiente |
 
 ## Bugs observados
 - Al implementar la navegación entre vistas, el menú no se ocultaba al ir a "Pagar" porque `.layout{display:grid}` anulaba el atributo `hidden`. Corregido con `[hidden]{display:none!important}` en `estilos.css`.

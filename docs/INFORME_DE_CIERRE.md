@@ -109,7 +109,7 @@ Los riesgos de la tabla son una **propuesta**. Hay que revisar con el equipo la 
 
 ## 7. Resultados de pruebas y auditoría
 - **Pruebas automáticas:** 15 de 15 pasan (`node --test pruebas/logica.test.js`, ejecutadas el 2026-11-11).
-- **Casos funcionales:** P1 a P26 en el `README.md`. Pendientes de ejecutar y registrar: P1, P2, P5, la parte visual de P14 y P26, y P19 contra Supabase. `[completar al cerrarlos]`
+- **Casos funcionales:** P1 a P26 en el `README.md`, ejecutados en Chromium el 2026-11-11 en modo local. Quedan pendientes P26 en Edge, Firefox y Safari, y P19 contra Supabase si se usa ese modo.
 - **Auditoría cruzada (SCRUM-73):** grupo auditor `[completar]`. Hallazgos: `[completar]` defectos, `[completar]` sugerencias y `[completar]` fuera de alcance. Corregidos: `[completar]`. Registro completo en `docs/KIT_AUDITORIA.md`.
 
 ## 8. Limitaciones y mantenimiento
