@@ -1,7 +1,9 @@
 # Lattely – Tu cafetería online (Proyecto integrador)
 
 Equipo: Jhoser Briceño (backend y coordinación), Stevan Alarcón (bases de datos), Camilo Molina (frontend y priorización), Joseph Álvarez (QA y apoyo frontend).
-Versión presentada: `<commit o ZIP>`. Jira: proyecto SCRUM.
+Versión presentada: `v1.0`. Jira: proyecto SCRUM.
+
+**Abrir en línea:** https://jhoser1801.github.io/Gerencia-de-Software-/
 
 ## Qué hace
 Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → confirmar pedido → pagar con la pasarela → consultar el pedido con su código.
@@ -19,6 +21,9 @@ Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → c
 - Para correr las pruebas automáticas: Node.js 18 o superior.
 
 ## Instalación y ejecución
+Opción rápida: abrir https://jhoser1801.github.io/Gerencia-de-Software-/ (GitHub Pages, HTTPS). No requiere instalar nada.
+
+Opción local:
 1. Descomprimir la carpeta (o clonar el repositorio).
 2. Abrir `index.html` con doble clic. No hay que modificar código.
 

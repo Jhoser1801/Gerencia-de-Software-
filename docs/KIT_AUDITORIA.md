@@ -5,13 +5,16 @@ Paquete para el grupo auditor (sección 4.3 del enunciado). El grupo debe poder 
 | Dato | Valor |
 |---|---|
 | Producto | Lattely – cafetería online |
-| Versión entregada | `[completar: commit o etiqueta, p. ej. v1.0]` |
+| Versión entregada | `v1.0` |
+| URL en línea | https://jhoser1801.github.io/Gerencia-de-Software-/ |
 | Repositorio | https://github.com/Jhoser1801/Gerencia-de-Software- |
 | Archivo de respaldo | `Lattely_codigo_fuente.zip` |
-| Modo de almacenamiento | `[completar: local (localStorage) o Supabase]` |
+| Modo de almacenamiento | Local (localStorage del navegador) |
 | Contacto solo para accesos caídos | `[completar]` |
 
 ## 1. Cómo ejecutarla
+La forma más fácil es abrir https://jhoser1801.github.io/Gerencia-de-Software-/. También se puede ejecutar sin internet:
+
 1. Descomprimir `Lattely_codigo_fuente.zip`.
 2. Abrir `lattely/index.html` en Chrome, Edge, Firefox o Safari.
 3. (Opcional) Pruebas automáticas, con Node.js 18 o superior, desde la carpeta `lattely`:

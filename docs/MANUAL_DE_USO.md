@@ -3,6 +3,9 @@
 Lattely es la cafetería online del proyecto integrador. Con ella el cliente arma su pedido de bebidas, lo confirma, lo paga y luego lo consulta con un código.
 
 ## 1. Abrir la aplicación
+En línea: abrir https://jhoser1801.github.io/Gerencia-de-Software-/.
+
+Sin internet:
 1. Descomprimir `Lattely_codigo_fuente.zip` o clonar el repositorio.
 2. Abrir `index.html` con doble clic en Chrome, Edge, Firefox o Safari.
 

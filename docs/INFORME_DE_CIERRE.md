@@ -4,7 +4,7 @@
 
 **Proyecto:** Lattely – cafetería online · **Asignatura:** Gerencia de Software (Proyecto integrador)
 **Equipo:** Jhoser Briceño, Stevan Alarcón, Camilo Molina, Joseph Álvarez
-**Versión entregada:** `[completar: commit o etiqueta]` · **Fecha:** `[completar]`
+**Versión entregada:** `v1.0` · **Fecha:** `[completar]`
 
 ## Evidencias
 | Componente | Enlace |
@@ -17,7 +17,7 @@
 | Manual de uso | `docs/MANUAL_DE_USO.md` |
 | Casos de prueba | `README.md`, sección *Pruebas* (P1 a P26) |
 | Kit y registro de auditoría | `docs/KIT_AUDITORIA.md` |
-| URL publicada | `[completar si se publica (SCRUM-71)]` |
+| URL publicada | https://jhoser1801.github.io/Gerencia-de-Software-/ |
 
 ## 1. Problema y usuarios
 Una cafetería necesita recibir pedidos de bebidas personalizadas sin errores de cobro. Los usuarios son los **clientes**, que arman el pedido, lo pagan y lo consultan, y la **cafetería**, que necesita saber qué pedidos están pagados. El problema que se ataca es el cálculo de precios con recargos (BUG-01: el recargo de la leche de almendras no se sumaba o podía duplicarse) y la falta de un registro confiable del pedido y del pago.
