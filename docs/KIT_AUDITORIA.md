@@ -63,6 +63,10 @@ El manual de uso está en `docs/MANUAL_DE_USO.md`.
 
 **Fuera del alcance de esta entrega** (no se reportan como defectos): inventario (SCRUM-13, 15, 16), búsqueda y filtros (SCRUM-17, 18), cuentas de usuario, y RF-01 y RF-04 a RF-09 del SRS.
 
+**Limitaciones conocidas** (no son defectos):
+- PSE es simulado: la pantalla del banco está dentro de Lattely y la respuesta (Pagar o Cancelar) la da la propia página; no hay conexión real con PSE.
+- El PIN de la vista Cafetería (`2468`) es de demostración y está en `config.js` y `db/schema.sql`; en una publicación real hay que cambiarlo.
+
 ## 4. Formato del registro de auditoría
 El grupo auditor llena una fila por hallazgo. **Tipo**: Defecto, Sugerencia o Fuera de alcance. **Severidad**: Alta (bloquea el recorrido o da un total incorrecto), Media (función con error que se puede evitar) o Baja (estética o texto).
 

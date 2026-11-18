@@ -95,7 +95,7 @@ async function confirmarPedido() {
   }
 }
 
-// Pagar: al recoger o por transferencia (SCRUM-45 y SCRUM-46). El pago queda pendiente hasta que la cafetería lo revisa.
+// Pagar con PSE o al recoger (SCRUM-45 y SCRUM-46). PSE responde Aprobado o Rechazado; al recoger queda pendiente hasta que la cafetería lo revisa.
 async function cargarPedidoParaPago(forzar) {
   const codigo = leerLocal(LLAVE_ULTIMO);
   if (!forzar && pago.pedido && pago.pedido.codigo === codigo) return pintarPago();
@@ -410,7 +410,7 @@ function pintarPago() {
         ${Pasarela.medios.map(m => `<label class="medio${m.id === medio ? " sel" : ""}" data-medio="${m.id}">
           <input type="radio" name="medio" value="${m.id}" ${m.id === medio ? "checked" : ""} onchange="elegirMedio('${m.id}')">
           <span><strong>${escapar(m.nombre)}</strong><br><small>${escapar(m.detalle)}</small></span></label>`).join("")}
-        <div id="panel-pse" class="panel-transf" ${medio === "pse" ? "" : "hidden"}>
+        <div id="panel-pse" class="panel-pse" ${medio === "pse" ? "" : "hidden"}>
           <label for="banco">Banco</label>
           <select id="banco" name="banco" onchange="$('error-pago').textContent=''">
             <option value="">Selecciona tu banco</option>
