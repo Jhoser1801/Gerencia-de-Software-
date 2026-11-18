@@ -12,7 +12,8 @@ Menú → personalizar bebida (tamaño y leche) → carrito con cantidades → c
 - [Manual de uso](docs/MANUAL_DE_USO.md)
 - [Arquitectura y flujos](docs/ARQUITECTURA.md)
 - [Kit de auditoría](docs/KIT_AUDITORIA.md)
-- [Informe de cierre (borrador)](docs/INFORME_DE_CIERRE.md)
+- [Informe de cierre](docs/INFORME_DE_CIERRE.md)
+- [Planificación y control del proyecto](docs/Lattely_Planificacion_y_control.docx) (backlog, roles, cronograma, presupuesto, riesgos y cambios)
 - [Requisitos (SRS IEEE 830)](docs/Lattely_SRS_IEEE830.docx)
 
 ## Requisitos
@@ -88,26 +89,26 @@ Cada producto define en `datos.js` su ruta por tamaño (`imagenes: { "Pequeño",
 Presentación: la bebida está "apoyada" en la base del recuadro y crece o se encoge desde abajo con una animación corta, con una sombra que acompaña el tamaño. Los botones de tamaño muestran un vaso de distinto alto. La ventana se dibuja una sola vez al abrirla (`pintarDetalle()`) y al elegir tamaño o leche solo se actualiza (`actualizarDetalle()`), así la foto no parpadea. Quien tenga activado "reducir movimiento" en su sistema ve el cambio sin animación.
 
 ## Relación de historias
-| HU | Jira | Responsable | Código | Evidencia |
-|---|---|---|---|---|
-| HU-01 Menú | SCRUM-7 | Camilo | `pintar()`, `elegirProducto()` | demo del catálogo y `datos.js` |
-| HU-02 Precio | SCRUM-8 | Stevan | `productosValidos()`, `precioUnitario()` | P3, P4 |
-| HU-03 Tamaño | SCRUM-9 | Joseph | `elegirTamano()`, `estado.tamano` | P5, P6 |
-| HU-04 Leche | SCRUM-10 | Camilo | `LECHES`, `elegirLeche()` | P8, P9 |
-| HU-05 Carrito | SCRUM-11 | Jhoser | `agregarItem()` | P10 |
-| HU-06 Total | SCRUM-12 | Camilo | `resumenCarrito()` | P11 |
-| Quitar del carrito | SCRUM-14 | Joseph | `quitarItem()` | P12, P13 |
-| Imagen por tamaño | SCRUM-41 | Joseph | `datosImagen()`, `htmlImagen()` | P14 |
-| Cantidades | SCRUM-40 | Camilo | `cambiarCantidad()`, `subtotalItem()` | P15, P16 |
-| Confirmar pedido | SCRUM-42 | Jhoser | `abrirResumen()`, `confirmarPedido()`, `validarCarrito()` | P17, P18 |
-| Guardar pedido | SCRUM-43 | Stevan | `db/schema.sql` `confirmar_pedido`, `api.js` | P19 |
-| Consultar pedido | SCRUM-44 | Camilo | `consultar()`, `consultar_pedido` | P20, P21 |
-| Pago por pasarela | SCRUM-45 | Jhoser | `pasarela.js`, `pagar()`, `pintarCafeteria()` | P22, P23, P27 |
-| Registro del pago | SCRUM-46 | Stevan | `registrar_pago`, `resolver_pago`, tabla `pagos` | P22, P27 |
-| Aviso de privacidad | SCRUM-47 | Camilo | `#privacidad` en `index.html` | P24 |
-| Celular y navegadores | SCRUM-48 | Camilo | `@media` en `estilos.css` | P25, P26 |
+| HU | Jira | Implementó | Revisó (subtarea) | Probó (subtarea) | Código | Evidencia |
+|---|---|---|---|---|---|---|
+| HU-01 Menú | SCRUM-7 | Camilo | Joseph (SCRUM-23) | Joseph (SCRUM-24) | `pintar()`, `elegirProducto()` | P1, P2 |
+| HU-02 Precio | SCRUM-8 | Stevan | Jhoser (SCRUM-25) | Joseph (SCRUM-26, 70) | `productosValidos()`, `precioUnitario()` | P3, P4 |
+| HU-03 Tamaño | SCRUM-9 | Joseph | Camilo (SCRUM-27) | Stevan (SCRUM-28) | `elegirTamano()`, `estado.tamano` | P5, P6 |
+| HU-04 Leche | SCRUM-10 | Camilo | Stevan (SCRUM-29) | Joseph (SCRUM-30) | `LECHES`, `elegirLeche()` | P8, P9 |
+| HU-05 Carrito | SCRUM-11 | Jhoser | Stevan (SCRUM-31) | Joseph (SCRUM-32) | `agregarItem()` | P10 |
+| HU-06 Total | SCRUM-12 | Camilo | Joseph (SCRUM-33) | Joseph (SCRUM-34) | `resumenCarrito()` | P11 |
+| Quitar del carrito | SCRUM-14 | Joseph | Camilo (SCRUM-37) | Stevan (SCRUM-38) | `quitarItem()` | P12, P13 |
+| Imagen por tamaño | SCRUM-41 | Joseph | Camilo (SCRUM-51) | Stevan (SCRUM-52) | `datosImagen()`, `htmlImagen()` | P14 |
+| Cantidades | SCRUM-40 | Camilo | Jhoser (SCRUM-49) | Joseph (SCRUM-50) | `cambiarCantidad()`, `subtotalItem()` | P15, P16 |
+| Confirmar pedido | SCRUM-42 | Jhoser | Stevan (SCRUM-53) | Joseph (SCRUM-54) | `abrirResumen()`, `confirmarPedido()`, `validarCarrito()` | P17, P18 |
+| Guardar pedido | SCRUM-43 | Stevan | Jhoser (SCRUM-58) | Joseph (SCRUM-59) | `db/schema.sql` `confirmar_pedido`, `api.js` | P19 |
+| Consultar pedido | SCRUM-44 | Camilo | Stevan (SCRUM-60) | Joseph (SCRUM-61) | `consultar()`, `consultar_pedido` | P20, P21 |
+| Pago por pasarela | SCRUM-45 | Jhoser | Camilo (SCRUM-62) | Joseph (SCRUM-63) | `pasarela.js`, `pagar()`, `pintarCafeteria()` | P22, P23, P27 |
+| Registro del pago | SCRUM-46 | Stevan | Jhoser (SCRUM-64) | Joseph (SCRUM-65) | `registrar_pago`, `resolver_pago`, tabla `pagos` | P22, P27 |
+| Aviso de privacidad | SCRUM-47 | Camilo | Joseph (SCRUM-66) | Stevan (SCRUM-67) | `#privacidad` en `index.html` | P24 |
+| Celular y navegadores | SCRUM-48 | Camilo | Jhoser (SCRUM-68) | Joseph (SCRUM-69) | `@media` en `estilos.css` | P25, P26 |
 
-Implementó / revisó / probó: completar por historia con enlace al commit (subtareas de revisión y prueba en Jira).
+Cada subtarea de revisión y de prueba está en Jira con su resultado y su evidencia.
 No implementadas en esta entrega: SCRUM-13, 15, 16 (inventario), SCRUM-17, 18 (búsqueda y filtros) y RF-01, RF-04 a RF-09 del SRS (evolución prevista).
 
 ## Pruebas
@@ -156,6 +157,6 @@ node --test pruebas/logica.test.js
 ## Imágenes
 Una foto por producto en `img/`: `latte.webp`, `cappuccino.webp`, `americano.webp` y `te-chai.webp`. Son PNG con fondo transparente que el equipo entregó, recortados al contorno de la taza, centrados en un lienzo cuadrado y reducidos a 600×600 en formato WebP (de 1,3 MB a menos de 60 KB cada uno). Los originales quedaron fuera del repositorio, en `Imagenes/originales_png/`.
 
-Origen y licencia de las fotos: `[completar]`.
+Las fotos las aportó el equipo y se usan solo con fines académicos, sin fines comerciales.
 
 En `datos.js` las rutas llevan `?v=4` (subir el número cuando se cambie una foto) para que el navegador no muestre la versión vieja guardada en caché.

@@ -10,7 +10,7 @@ Paquete para el grupo auditor (sección 4.3 del enunciado). El grupo debe poder 
 | Repositorio | https://github.com/Jhoser1801/Gerencia-de-Software- |
 | Archivo de respaldo | `Lattely_codigo_fuente.zip` |
 | Modo de almacenamiento | Local (localStorage del navegador) |
-| Contacto solo para accesos caídos | `[completar]` |
+| Contacto solo para accesos caídos | Jhoser Briceño (coordinación), por Jira (proyecto SCRUM) o por el repositorio en GitHub |
 
 ## 1. Cómo ejecutarla
 La forma más fácil es abrir https://jhoser1801.github.io/Gerencia-de-Software-/. También se puede ejecutar sin internet:

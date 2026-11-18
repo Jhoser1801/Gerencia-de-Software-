@@ -4,7 +4,7 @@
 **Equipo:** Jhoser Briceño, Stevan Alarcón, Camilo Molina, Joseph Álvarez
 **Versión entregada:** `v1.0` · **Fecha:** 2026-11-18
 
-> Las horas reales de este informe se reconstruyeron al cierre, porque no se registraron en Jira durante el trabajo. El detalle de la planificación está en el documento *Lattely – Planificación y control del proyecto*.
+> Las horas reales de este informe se reconstruyeron al cierre, porque no se registraron en Jira durante el trabajo. El detalle de la planificación está en `docs/Lattely_Planificacion_y_control.docx`.
 
 ## Evidencias
 | Componente | Enlace |
@@ -13,6 +13,7 @@
 | ZIP de respaldo | `Lattely_codigo_fuente.zip` en el repositorio |
 | Tablero Jira (proyecto SCRUM) | https://usantoto-team-x372epjv.atlassian.net/jira/software/projects/SCRUM/boards/1 |
 | Requisitos (SRS IEEE 830) | `docs/Lattely_SRS_IEEE830.docx` |
+| Planificación y control del proyecto | `docs/Lattely_Planificacion_y_control.docx` |
 | Arquitectura y flujos | `docs/ARQUITECTURA.md` |
 | Manual de uso | `docs/MANUAL_DE_USO.md` |
 | Casos de prueba | `README.md`, sección *Pruebas* (P1 a P29) |
