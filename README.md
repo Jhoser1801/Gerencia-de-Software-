@@ -144,7 +144,7 @@ node --test pruebas/logica.test.js
 | P23 | SCRUM-45 inválido/límite | PSE sin banco; pagar al recoger dos veces; pagar un pedido ya pagado; la cafetería marca pagado un pago al recoger | "Elige tu banco."; "…ya tiene un pago pendiente…"; "Este pedido ya está pagado."; pedido Pagado | A, N |
 | P24 | SCRUM-47 | Abrir y cerrar el aviso con ítems en el carrito | Aviso visible; carrito y total se conservan | N |
 | P25 | SCRUM-48 celular | Ancho 375 px en menú, pago y consulta | Sin desplazamiento horizontal | N |
-| P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | N en Chromium (Chrome); Edge, Firefox y Safari Pendiente |
+| P26 | SCRUM-48 navegadores | Recorrido completo en Chrome, Edge, Firefox, Safari | Funciona igual | N en Chromium (Chrome) y en Edge 157 (2026-11-18, evidencia en SCRUM-69); Firefox y Safari Pendiente |
 | P27 | Seguridad del pago | Registrar un pago al recoger como "Aprobado" desde el navegador; PSE con un banco que no está en la lista; entrar a Cafetería con PIN `1111` | "Un pago al recoger solo lo aprueba la cafetería."; "Elige tu banco."; "PIN incorrecto." | A, N |
 | P28 | Bebidas sin leche | Abrir Té Chai y Café Americano; enviar un pedido de Té Chai con leche Almendras | No se muestra la opción de leche; se guarda "Sin leche" sin recargo ($4.800 c/u) | A, N |
 | P29 | Temperatura del Café Americano | Agregar un Café Americano Mediano sin elegir temperatura; luego elegir Frío | "…elige si lo quieres caliente o frío." y no se agrega; con Frío se agrega como "Mediano · Frío · Sin leche", $3.800 | A, N |
